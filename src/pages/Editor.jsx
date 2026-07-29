@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { LOTS, MAPA_AEREO } from "../data";
+import { LOTS, MAPA_PLANO } from "../data";
 
 /* ══════════════════════════════════════════════════
    EDITOR DE POSICIONES — herramienta interna
@@ -12,7 +12,7 @@ export default function Editor() {
   const [lots, setLots] = useState(LOTS.map((l) => ({ ...l })));
   const [sel, setSel] = useState(null);
   const [drag, setDrag] = useState(null);
-  const [bg, setBg] = useState(MAPA_AEREO);
+  const [bg, setBg] = useState(MAPA_PLANO);
   const [copiado, setCopiado] = useState(false);
   const [zoom, setZoom] = useState(1);
   const boxRef = useRef(null);
@@ -25,11 +25,12 @@ export default function Editor() {
     setLots((ls) => ls.map((l) => (l.id === drag ? { ...l, x: +x.toFixed(1), y: +y.toFixed(1) } : l)));
   };
 
-  const json = "export const LOTS = [\n" +
-    lots.map((l) =>
-      `  { id: ${l.id}, name: ${JSON.stringify(l.name).padEnd(19)} area: ${l.area}, price: ${l.price}, sold: ${l.sold},${l.sold ? " " : ""} x: ${l.x}, y: ${l.y} },`
-        .replace(/name: ("[^"]*")\s+area/, (m, n) => `name: ${n},`.padEnd(26) + " area")
-    ).join("\n") + "\n];";
+  const json =
+    "const POS = {\n" +
+    lots.map((l, i) => `  ${l.id}:{x:${l.x},y:${l.y}},` + ((i + 1) % 5 === 0 ? "\n" : "")).join("").trimEnd() +
+    "\n};\n\n/* Referencia:\n" +
+    lots.map((l) => `   ${String(l.id).padStart(2, " ")} — ${l.name}${l.sold ? "  [VENDIDO]" : ""}`).join("\n") +
+    "\n*/";
 
   const copiar = () => {
     navigator.clipboard.writeText(json);
@@ -118,6 +119,57 @@ export default function Editor() {
                 </div>
               );
             })}
+          </div>
+        </div>
+
+        {/* Marcar vendidos */}
+        <div className="glass" style={{ marginTop: 24, padding: 24 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
+            <div>
+              <span className="eyebrow" style={{ fontSize: 10.5 }}>Marcar vendidos</span>
+              <p className="meta" style={{ marginTop: 8 }}>
+                Click en un lote para cambiar su estado. Copia el bloque de abajo a <code style={{ color: "#D9AE7B" }}>RAW</code> en data.js.
+              </p>
+            </div>
+            <div className="glass-pill" style={{ padding: "9px 18px", fontSize: 12.5, color: "#A29686" }}>
+              {lots.filter((l) => !l.sold).length} libres · {lots.filter((l) => l.sold).length} vendidos
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 7 }}>
+            {lots.map((l) => (
+              <button key={l.id}
+                onClick={() => setLots((ls) => ls.map((x) => (x.id === l.id ? { ...x, sold: !x.sold } : x)))}
+                onMouseEnter={() => setSel(l.id)}
+                style={{
+                  padding: "10px 13px", borderRadius: 11, cursor: "pointer", textAlign: "left", fontSize: 12.5,
+                  background: l.sold ? "rgba(150,140,128,0.14)" : "rgba(143,187,104,0.13)",
+                  border: sel === l.id ? "1px solid rgba(201,154,99,0.6)" : l.sold ? "1px solid rgba(150,140,128,0.25)" : "1px solid rgba(143,187,104,0.3)",
+                  color: l.sold ? "#8B8173" : "#C6D9B0",
+                  display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
+                  transition: "all 0.25s ease",
+                }}>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {l.id}. {l.name}
+                </span>
+                <span style={{ fontSize: 9, letterSpacing: "0.1em", opacity: 0.8, flexShrink: 0 }}>
+                  {l.sold ? "VEND" : "LIBRE"}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div style={{ marginTop: 20, display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button className="btn btn-glass" style={{ padding: "11px 20px", fontSize: 12.5 }}
+              onClick={() => {
+                const raw = "const RAW = [\n" +
+                  lots.map((l) => `  [${JSON.stringify(l.name).padEnd(20)} ${String(l.areaExacta ?? l.area).padStart(9)}, ${l.sold ? "true " : "false"}],`).join("\n") +
+                  "\n];";
+                navigator.clipboard.writeText(raw);
+                setCopiado(true); setTimeout(() => setCopiado(false), 2200);
+              }}>
+              Copiar bloque RAW (nombres + áreas + vendidos)
+            </button>
           </div>
         </div>
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { wa, WA, AVAIL, DISPONIBLES, cop, PRECIO_MIN } from "../data";
+import { wa, WA, AVAIL, DISPONIBLES, cop, PRECIO_MIN, TEL_DISPLAY } from "../data";
 import { IconWa, IconPin, useReveal, Head } from "../components/ui";
 
 const INTERES = ["Un lote (solo terreno)", "Promoción Casa + Lote", "Todavía no lo tengo claro"];
@@ -115,7 +115,7 @@ export default function Contacto() {
                     <span style={{ color: "#25D366" }}><IconWa s={22} /></span>
                     <div>
                       <div style={{ fontSize: 16.5, color: "#F2EBE0" }}>WhatsApp</div>
-                      <div className="meta" style={{ marginTop: 3 }}>+57 300 123 4567 · Respuesta en minutos</div>
+                      <div className="meta" style={{ marginTop: 3 }}>{TEL_DISPLAY} · Respuesta en minutos</div>
                     </div>
                   </div>
                 </a>

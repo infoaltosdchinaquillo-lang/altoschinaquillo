@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { wa, AVAIL } from "../data";
+import { wa, AVAIL, TEL_DISPLAY } from "../data";
 import { IconWa } from "./ui";
 
 const NAV = [
@@ -119,7 +119,7 @@ export default function Layout({ children }) {
             </div>
             <div>
               <div className="eyebrow" style={{ fontSize: 10.5 }}>Contacto</div>
-              <p className="body" style={{ marginTop: 18 }}>WhatsApp +57 300 123 4567<br />@altos_del_chinaquillo</p>
+              <p className="body" style={{ marginTop: 18 }}>WhatsApp {TEL_DISPLAY}<br />@altos_del_chinaquillo</p>
             </div>
           </div>
           <div className="hair" style={{ margin: "52px 0 26px" }} />
