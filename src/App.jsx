@@ -1,5 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
+/* ═══════════════════════════════════════════
+   DATA
+   ═══════════════════════════════════════════ */
 const LOTS_DATA = [
   { id: 1, name: "Abedul", area: 1063, price: 180, sold: true },
   { id: 2, name: "Arboleta", area: 1086, price: 185, sold: true },
@@ -49,9 +52,24 @@ const LOTS_DATA = [
   { id: 46, name: "Vía Sevilla", area: 1050, price: 195, sold: false },
 ];
 
-// TODO: Reemplazar con número real
 const WHATSAPP_NUMBER = "573001234567";
 
+const GALLERY_IMAGES = [
+  { src: "/Gallery/DJI_0710.jpg", alt: "Vista aérea del proyecto" },
+  { src: "/Gallery/DJI_0723.jpg", alt: "Vista aérea montaña" },
+  { src: "/images/Altos_proyecto.jpg", alt: "Panorámica del proyecto" },
+  { src: "/images/Altos_proyecto_2.jpg", alt: "Proyecto con casas" },
+];
+
+const PROMO_IMAGES = [
+  { src: "/Promocion/Casa_fachada.jpeg", alt: "Fachada casa campestre", label: "Fachada" },
+  { src: "/Promocion/Planta_1.jpeg", alt: "Planta arquitectónica 3D", label: "Planta" },
+  { src: "/Promocion/Plano_1.jpeg", alt: "Plano de distribución", label: "Plano" },
+];
+
+/* ═══════════════════════════════════════════
+   UTILS
+   ═══════════════════════════════════════════ */
 function formatCOP(millions) {
   return `$${millions}M`;
 }
@@ -65,12 +83,37 @@ function formatFullCOP(value) {
   }).format(value);
 }
 
-/* ─── Animated Counter ─── */
-function AnimatedCounter({ target, duration = 2000, suffix = "" }) {
+function waLink(msg) {
+  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
+}
+
+/* ═══════════════════════════════════════════
+   HOOKS
+   ═══════════════════════════════════════════ */
+function useReveal() {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          el.classList.add("visible");
+          observer.unobserve(el);
+        }
+      },
+      { threshold: 0.15, rootMargin: "0px 0px -40px 0px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return ref;
+}
+
+function useCounter(target, duration = 2200) {
   const [count, setCount] = useState(0);
   const ref = useRef(null);
   const started = useRef(false);
-
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -80,12 +123,8 @@ function AnimatedCounter({ target, duration = 2000, suffix = "" }) {
           const step = target / (duration / 16);
           const timer = setInterval(() => {
             start += step;
-            if (start >= target) {
-              setCount(target);
-              clearInterval(timer);
-            } else {
-              setCount(Math.floor(start));
-            }
+            if (start >= target) { setCount(target); clearInterval(timer); }
+            else setCount(Math.floor(start));
           }, 16);
         }
       },
@@ -94,16 +133,12 @@ function AnimatedCounter({ target, duration = 2000, suffix = "" }) {
     if (ref.current) observer.observe(ref.current);
     return () => observer.disconnect();
   }, [target, duration]);
-
-  return (
-    <span ref={ref}>
-      {count}
-      {suffix}
-    </span>
-  );
+  return [ref, count];
 }
 
-/* ─── WhatsApp SVG Icon ─── */
+/* ═══════════════════════════════════════════
+   ICONS
+   ═══════════════════════════════════════════ */
 function WhatsAppIcon({ size = 20 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
@@ -112,133 +147,34 @@ function WhatsAppIcon({ size = 20 }) {
   );
 }
 
-/* ─── Leaf SVG decoration ─── */
-function LeafDecor({ className = "" }) {
+function CheckIcon() {
   return (
-    <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.15">
-      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c1.5-3 2-7 0-10C9.5 9 6 8.5 2 12" />
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-emerald-400 shrink-0">
+      <path d="M5 12l5 5L20 7" />
     </svg>
   );
 }
 
-/* ─── Section Divider ─── */
-function SectionDivider() {
+function ArrowIcon({ className = "" }) {
   return (
-    <div className="flex items-center justify-center gap-4 py-2">
-      <div className="h-px w-16 bg-gradient-to-r from-transparent to-ambar/20" />
-      <div className="w-1.5 h-1.5 rounded-full bg-ambar/30" />
-      <div className="h-px w-16 bg-gradient-to-l from-transparent to-ambar/20" />
-    </div>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+      <path d="M7 17L17 7M17 7H7M17 7v10" />
+    </svg>
   );
 }
 
-/* ─── Payment Simulator ─── */
-function PaymentSimulator({ lot }) {
-  const [months, setMonths] = useState(15);
-  const [paymentType, setPaymentType] = useState("mensual");
-
-  const priceM = lot ? lot.price : 180;
-  const priceCOP = priceM * 1_000_000;
-  const inicial = priceCOP * 0.3;
-  const financiado = priceCOP * 0.7;
-
-  let numPayments, cuota;
-  if (paymentType === "mensual") {
-    numPayments = months;
-    cuota = financiado / months;
-  } else {
-    numPayments = Math.ceil(months / 3);
-    cuota = financiado / numPayments;
-  }
-
-  return (
-    <div className="bg-gradient-to-b from-white/[0.04] to-white/[0.01] border border-white/[0.08] rounded-3xl p-6 sm:p-9 backdrop-blur-sm">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="text-[11px] font-semibold tracking-[3px] text-ambar/60 uppercase mb-2">Simulador</div>
-        <div className="font-display text-2xl font-bold text-crema">Plan de Pagos</div>
-        <div className="text-sm text-white/40 mt-1">
-          {lot ? `Lote ${lot.name} · ${lot.area.toLocaleString()} m²` : "Selecciona un lote disponible arriba"}
-        </div>
-      </div>
-
-      {/* Price blocks */}
-      <div className="grid grid-cols-2 gap-4 mb-7">
-        <div className="flex flex-col gap-1.5 p-4 bg-white/[0.04] rounded-xl border border-white/[0.06]">
-          <span className="text-[10px] font-semibold tracking-wider text-white/35 uppercase">Valor total</span>
-          <span className="text-lg sm:text-xl font-bold text-crema font-display">{formatFullCOP(priceCOP)}</span>
-        </div>
-        <div className="flex flex-col gap-1.5 p-4 bg-ambar/[0.06] rounded-xl border border-ambar/15">
-          <span className="text-[10px] font-semibold tracking-wider text-ambar/50 uppercase">Inicial (30%)</span>
-          <span className="text-lg sm:text-xl font-bold text-ambar font-display">{formatFullCOP(inicial)}</span>
-        </div>
-      </div>
-
-      <div className="h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent mb-7" />
-
-      {/* Slider */}
-      <div className="mb-6">
-        <span className="text-[10px] font-semibold tracking-wider text-white/35 uppercase">Plazo de financiación</span>
-        <input
-          type="range"
-          min={6}
-          max={15}
-          value={months}
-          onChange={(e) => setMonths(Number(e.target.value))}
-          className="w-full"
-        />
-        <div className="flex justify-between text-xs text-white/30">
-          <span>6 meses</span>
-          <span className="font-bold text-ambar text-xl font-display">{months} meses</span>
-          <span>15 meses</span>
-        </div>
-      </div>
-
-      {/* Payment type */}
-      <div className="flex gap-2 mb-6">
-        {["mensual", "trimestral"].map((t) => (
-          <button
-            key={t}
-            onClick={() => setPaymentType(t)}
-            className={`flex-1 py-3 px-4 rounded-xl text-sm font-semibold cursor-pointer font-body transition-all border ${
-              paymentType === t
-                ? "bg-ambar text-[#1a1a1a] border-ambar"
-                : "bg-transparent text-ambar/70 border-white/10 hover:border-ambar/30"
-            }`}
-          >
-            {t === "mensual" ? "Mensuales" : "Trimestrales"}
-          </button>
-        ))}
-      </div>
-
-      {/* Result */}
-      <div className="text-center p-7 bg-gradient-to-b from-ambar/[0.10] to-ambar/[0.04] rounded-2xl border border-ambar/20 mb-6">
-        <div className="text-sm text-white/45 mb-3">
-          {numPayments} cuotas {paymentType === "mensual" ? "mensuales" : "trimestrales"} de
-        </div>
-        <div className="font-display text-4xl sm:text-[44px] font-bold text-ambar leading-none">{formatFullCOP(cuota)}</div>
-        <div className="text-xs text-white/30 mt-3 tracking-wide">Sin intereses · Financiación directa</div>
-      </div>
-
-      {/* WhatsApp CTA */}
-      <a
-        href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-          `Hola, estoy interesado en el lote ${lot ? lot.name : ""} de Altos del Chinaquillo. Me gustaría recibir más información.`
-        )}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center justify-center gap-2.5 w-full py-4 px-6 bg-[#25D366] text-white rounded-xl text-[15px] font-semibold no-underline hover:bg-[#20bd5a] transition-all hover:shadow-[0_8px_30px_rgba(37,211,102,0.3)]"
-      >
-        <WhatsAppIcon />
-        Quiero este lote
-      </a>
-    </div>
-  );
-}
-
-/* ─── Lot Modal ─── */
+/* ═══════════════════════════════════════════
+   LOT MODAL
+   ═══════════════════════════════════════════ */
 function LotModal({ lot, onClose }) {
   const [months, setMonths] = useState(12);
+  const [activeImg, setActiveImg] = useState(0);
+
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   if (!lot) return null;
 
@@ -247,728 +183,750 @@ function LotModal({ lot, onClose }) {
   const financiado = priceCOP * 0.7;
   const cuota = financiado / months;
 
-  // Gallery images for all lots
-  const lotImages = [
-    "/Gallery/DJI_0710.jpg",
-    "/Gallery/DJI_0723.jpg",
-    "/images/Altos_proyecto.jpg",
-  ];
+  const images = GALLERY_IMAGES;
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center" onClick={onClose}>
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/85 backdrop-blur-md animate-[fadeIn_0.3s_ease-out]" />
 
       {/* Modal */}
       <div
-        className="relative bg-[#1a1816] border border-white/[0.08] rounded-3xl w-full max-w-[720px] max-h-[90vh] overflow-y-auto shadow-[0_40px_100px_rgba(0,0,0,0.6)]"
+        className="relative w-full sm:w-[90vw] sm:max-w-[860px] max-h-[95vh] sm:max-h-[88vh] bg-surface border border-white/[0.06] sm:rounded-2xl overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.8)] animate-[slideUp_0.4s_cubic-bezier(0.16,1,0.3,1)]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-black/50 border border-white/10 text-white/60 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
-          aria-label="Cerrar"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M6 6l12 12M6 18L18 6" />
-          </svg>
-        </button>
-
-        {/* Image gallery */}
-        <div className="relative h-[200px] sm:h-[260px] overflow-hidden rounded-t-3xl">
+        {/* Top image section */}
+        <div className="relative h-[220px] sm:h-[300px]">
           <img
-            src={lotImages[0]}
-            alt={`Vista lote ${lot.name}`}
-            className="w-full h-full object-cover"
+            src={images[activeImg].src}
+            alt={images[activeImg].alt}
+            className="w-full h-full object-cover transition-opacity duration-500"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#1a1816] via-transparent to-transparent" />
-          <div className="absolute bottom-4 left-6 flex gap-2">
-            {lotImages.map((img, i) => (
-              <div key={i} className="w-14 h-10 rounded-lg overflow-hidden border-2 border-white/20 opacity-70 hover:opacity-100 transition-opacity">
-                <img src={img} alt="" className="w-full h-full object-cover" />
-              </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/20 to-transparent" />
+
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 text-white/70 hover:text-white hover:bg-black/60 flex items-center justify-center cursor-pointer transition-all"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 6l12 12M6 18L18 6" /></svg>
+          </button>
+
+          {/* Image thumbnails */}
+          <div className="absolute bottom-4 left-5 flex gap-2">
+            {images.map((img, i) => (
+              <button
+                key={i}
+                onClick={() => setActiveImg(i)}
+                className={`w-12 h-9 rounded-lg overflow-hidden border-2 cursor-pointer transition-all ${
+                  i === activeImg ? "border-ambar scale-105" : "border-white/20 opacity-60 hover:opacity-90"
+                }`}
+              >
+                <img src={img.src} alt="" className="w-full h-full object-cover" />
+              </button>
             ))}
-            <div className="w-14 h-10 rounded-lg border-2 border-dashed border-white/20 flex items-center justify-center text-white/30 text-[10px]">
-              360°
-            </div>
+          </div>
+
+          {/* Lot status badge */}
+          <div className="absolute top-4 left-5 flex items-center gap-2 px-3 py-1.5 bg-emerald-500/20 backdrop-blur-sm border border-emerald-400/30 rounded-full">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-[dotPulse_2s_infinite]" />
+            <span className="text-[10px] font-bold tracking-[2px] text-emerald-300 uppercase">Disponible</span>
           </div>
         </div>
 
         {/* Content */}
-        <div className="p-6 sm:p-8">
+        <div className="p-6 sm:p-8 overflow-y-auto" style={{ maxHeight: "calc(95vh - 220px)" }}>
           {/* Header */}
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-[dotPulse_2s_infinite]" />
-            <span className="text-[10px] font-semibold tracking-[2px] text-emerald-400/80 uppercase">Disponible</span>
+          <div className="mb-6">
+            <h3 className="font-display text-3xl sm:text-4xl font-bold text-crema tracking-tight">{lot.name}</h3>
+            <p className="text-white/30 text-sm mt-1 font-body">Lote #{lot.id} &middot; Altos del Chinaquillo &middot; {lot.area.toLocaleString()} m²</p>
           </div>
-          <h3 className="font-display text-3xl sm:text-4xl font-bold text-crema mb-1">{lot.name}</h3>
-          <p className="text-white/40 text-sm">Lote #{lot.id} · Altos del Chinaquillo</p>
 
-          {/* Specs */}
-          <div className="grid grid-cols-3 gap-4 mt-6 mb-6">
-            {[
-              { label: "Área", value: `${lot.area.toLocaleString()} m²` },
-              { label: "Precio", value: formatFullCOP(priceCOP) },
-              { label: "Inicial 30%", value: formatFullCOP(inicial) },
-            ].map((s, i) => (
-              <div key={i} className="p-3 bg-white/[0.03] rounded-xl border border-white/[0.06] text-center">
-                <div className="text-[10px] text-white/30 uppercase tracking-wider mb-1">{s.label}</div>
-                <div className="font-display font-bold text-ambar text-sm sm:text-base">{s.value}</div>
+          {/* Two-column layout */}
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr] gap-6">
+            {/* Left: Details */}
+            <div className="space-y-5">
+              {/* Price cards */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                  <div className="text-[10px] text-white/25 uppercase tracking-wider font-semibold mb-1">Precio total</div>
+                  <div className="font-display font-bold text-ambar text-lg">{formatFullCOP(priceCOP)}</div>
+                </div>
+                <div className="p-4 rounded-xl bg-ambar/[0.06] border border-ambar/15">
+                  <div className="text-[10px] text-ambar/40 uppercase tracking-wider font-semibold mb-1">Inicial 30%</div>
+                  <div className="font-display font-bold text-ambar text-lg">{formatFullCOP(inicial)}</div>
+                </div>
               </div>
-            ))}
-          </div>
 
-          {/* Quick simulator */}
-          <div className="p-5 bg-gradient-to-b from-ambar/[0.06] to-transparent rounded-2xl border border-ambar/10 mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[11px] font-semibold tracking-wider text-white/40 uppercase">Cuota mensual</span>
-              <span className="text-xs text-white/30">{months} meses</span>
-            </div>
-            <input
-              type="range"
-              min={6}
-              max={15}
-              value={months}
-              onChange={(e) => setMonths(Number(e.target.value))}
-              className="w-full mb-3"
-            />
-            <div className="text-center">
-              <div className="font-display text-3xl font-bold text-ambar">{formatFullCOP(cuota)}</div>
-              <div className="text-[11px] text-white/30 mt-1">Sin intereses · Financiación directa</div>
-            </div>
-          </div>
-
-          {/* Included */}
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            {["Agua y luz", "Vía de acceso", "Alcantarillado", "Escritura pública"].map((item, i) => (
-              <div key={i} className="flex items-center gap-2 text-[13px] text-white/50">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-emerald-400 shrink-0">
-                  <path d="M5 12l5 5L20 7" />
-                </svg>
-                {item}
+              {/* Included features */}
+              <div className="space-y-2.5">
+                <div className="text-[10px] font-semibold tracking-wider text-white/25 uppercase">Incluye</div>
+                {["Agua potable y red eléctrica", "Alcantarillado", "Vía de acceso vehicular", "Escritura pública individual", "Licencia de urbanismo"].map((item, i) => (
+                  <div key={i} className="flex items-center gap-2.5 text-[13px] text-white/50">
+                    <CheckIcon />
+                    {item}
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+
+            {/* Right: Quick simulator */}
+            <div className="p-5 rounded-2xl bg-gradient-to-b from-white/[0.03] to-transparent border border-white/[0.06]">
+              <div className="text-[10px] font-semibold tracking-wider text-white/25 uppercase mb-4">Simula tu cuota</div>
+
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-white/30">Plazo</span>
+                <span className="font-display font-bold text-ambar text-lg">{months} meses</span>
+              </div>
+              <input
+                type="range" min={6} max={15} value={months}
+                onChange={(e) => setMonths(Number(e.target.value))}
+                className="w-full"
+              />
+              <div className="flex justify-between text-[11px] text-white/20 mb-5">
+                <span>6 meses</span><span>15 meses</span>
+              </div>
+
+              <div className="text-center p-5 rounded-xl bg-ambar/[0.06] border border-ambar/15">
+                <div className="text-xs text-white/35 mb-2">Cuota mensual</div>
+                <div className="font-display text-3xl font-bold text-ambar">{formatFullCOP(cuota)}</div>
+                <div className="text-[11px] text-white/25 mt-2">Sin intereses &middot; Financiación directa</div>
+              </div>
+            </div>
           </div>
 
           {/* CTA */}
-          <a
-            href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-              `Hola, me interesa el lote ${lot.name} (${lot.area.toLocaleString()} m², ${formatFullCOP(priceCOP)}) en Altos del Chinaquillo. Quiero más información.`
-            )}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2.5 w-full py-4 bg-[#25D366] text-white rounded-xl text-[15px] font-semibold no-underline hover:bg-[#20bd5a] transition-all hover:shadow-[0_8px_30px_rgba(37,211,102,0.3)]"
-          >
-            <WhatsAppIcon />
-            Quiero este lote
-          </a>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Casa + Lote Promo Section ─── */
-function CasaLotePromo() {
-  return (
-    <section id="casa-lote" className="px-6 sm:px-8 py-16 sm:py-24 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-bosque/20 via-transparent to-transparent" />
-      <div className="max-w-[1060px] mx-auto relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-14 items-center">
-          {/* Image */}
-          <div className="relative rounded-3xl overflow-hidden group">
-            <img
-              src="/Gallery/Lote_20.jpg"
-              alt="Casa + Lote en construcción con vista panorámica"
-              className="w-full h-[300px] sm:h-[400px] object-cover group-hover:scale-105 transition-transform duration-700"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-            <div className="absolute top-5 left-5 inline-flex items-center gap-2 px-4 py-2 bg-ambar rounded-full">
-              <div className="w-1.5 h-1.5 rounded-full bg-white animate-[dotPulse_2s_infinite]" />
-              <span className="text-[11px] font-bold tracking-[2px] text-[#1a1a1a] uppercase">Promoción</span>
-            </div>
-            <div className="absolute bottom-5 left-5 right-5">
-              <img
-                src="/images/Altos_proyecto_2.jpg"
-                alt="Vista aérea del proyecto"
-                className="w-20 h-14 rounded-lg object-cover border-2 border-white/30 shadow-lg"
-              />
-            </div>
-          </div>
-
-          {/* Content */}
-          <div>
-            <div className="text-[11px] font-semibold tracking-[4px] text-ambar/70 mb-4">PROMOCIÓN ESPECIAL</div>
-            <h2 className="font-display text-[32px] sm:text-[44px] font-bold leading-[1.1] mb-5 text-crema tracking-tight">
-              Casa + Lote<br />
-              <span className="text-ambar">Listo para vivir.</span>
-            </h2>
-            <p className="text-[15px] sm:text-[16px] leading-[1.7] text-crema/50 mb-8">
-              Casa de 115 m² cubiertos más 20 m² de terraza con vista a la montaña. Diseñada para disfrutar desde el primer día.
-            </p>
-
-            {/* Specs grid */}
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-8">
-              {[
-                { icon: "🛏️", label: "2 Habitaciones" },
-                { icon: "🚿", label: "1 Baño" },
-                { icon: "🛋️", label: "Sala" },
-                { icon: "🍽️", label: "Comedor" },
-                { icon: "📐", label: "115 m² cubierta" },
-                { icon: "🌿", label: "20 m² terraza" },
-              ].map((spec, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 bg-white/[0.03] rounded-xl border border-white/[0.06]">
-                  <span className="text-xl">{spec.icon}</span>
-                  <span className="text-[14px] font-medium text-crema/80">{spec.label}</span>
-                </div>
-              ))}
-            </div>
-
+          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <a
-              href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-                "Hola, me interesa la promoción Casa + Lote de Altos del Chinaquillo. Quiero saber precios y disponibilidad."
-              )}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2.5 bg-ambar text-[#1a1a1a] px-8 py-4 rounded-xl text-[15px] font-semibold no-underline hover:bg-ambar/90 transition-all hover:shadow-[0_8px_30px_rgba(196,149,106,0.25)]"
+              href={waLink(`Hola, me interesa el lote ${lot.name} (${lot.area.toLocaleString()} m², ${formatFullCOP(priceCOP)}) en Altos del Chinaquillo.`)}
+              target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2.5 py-3.5 bg-[#25D366] text-white rounded-xl text-[14px] font-semibold no-underline hover:bg-[#20bd5a] transition-all"
             >
-              <WhatsAppIcon />
-              Consultar precio
+              <WhatsAppIcon size={18} />
+              Quiero este lote
+            </a>
+            <a
+              href={waLink(`Hola, quiero agendar una visita al lote ${lot.name} en Altos del Chinaquillo.`)}
+              target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 py-3.5 bg-transparent text-crema/70 border border-white/10 rounded-xl text-[14px] font-medium no-underline hover:border-white/25 hover:text-crema transition-all"
+            >
+              Agendar visita
             </a>
           </div>
         </div>
       </div>
-    </section>
-  );
-}
-
-/* ─── Lot Card ─── */
-function LotCard({ lot, isSelected, onSelect, onOpenModal }) {
-  if (lot.sold) {
-    return (
-      <div className="relative rounded-2xl border border-white/[0.04] bg-white/[0.015] p-5 sm:p-6 opacity-40">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="font-display text-lg font-bold text-white/60">{lot.name}</div>
-            <div className="text-[13px] text-white/25 mt-0.5">{lot.area.toLocaleString()} m²</div>
-          </div>
-          <span className="text-[9px] font-bold tracking-[2px] text-white/20 uppercase">Vendido</span>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      onClick={() => {
-        onSelect(lot);
-        onOpenModal(lot);
-      }}
-      className={`group relative rounded-2xl border p-5 sm:p-6 cursor-pointer transition-all duration-300 ${
-        isSelected
-          ? "border-ambar/60 bg-gradient-to-b from-ambar/[0.12] to-ambar/[0.04] shadow-[0_0_40px_rgba(196,149,106,0.1)]"
-          : "border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-transparent hover:-translate-y-1 hover:border-ambar/30 hover:shadow-[0_16px_48px_rgba(196,149,106,0.08)]"
-      }`}
-    >
-      {/* Disponible badge */}
-      <div className="flex items-center gap-1.5 mb-4">
-        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-[dotPulse_2s_infinite]" />
-        <span className="text-[10px] font-semibold tracking-[2px] text-emerald-400/80 uppercase">Disponible</span>
-      </div>
-
-      {/* Name */}
-      <div className="font-display text-2xl font-bold text-crema mb-1 group-hover:text-ambar transition-colors">{lot.name}</div>
-      <div className="text-sm text-white/35">{lot.area.toLocaleString()} m²</div>
-
-      {/* Price */}
-      <div className="mt-5 pt-4 border-t border-white/[0.06] flex items-end justify-between">
-        <div>
-          <div className="text-[10px] text-white/25 uppercase tracking-wider mb-1">Desde</div>
-          <div className="font-display text-2xl font-bold text-ambar">{formatCOP(lot.price)}</div>
-        </div>
-        <span className="text-xs text-white/25 group-hover:text-ambar/50 transition-colors pb-1">
-          Ver detalles →
-        </span>
-      </div>
     </div>
   );
 }
 
-/* ─── Feature Card ─── */
-function FeatureCard({ icon, title, desc, index }) {
-  return (
-    <div
-      className="group p-8 sm:p-9 bg-gradient-to-b from-white/[0.04] to-transparent border border-white/[0.06] rounded-2xl hover:border-ambar/20 hover:-translate-y-1 transition-all duration-500"
-      style={{ animationDelay: `${index * 100}ms` }}
-    >
-      <div className="w-12 h-12 rounded-xl bg-ambar/[0.08] border border-ambar/15 flex items-center justify-center text-2xl mb-5 group-hover:scale-110 group-hover:bg-ambar/[0.15] transition-all duration-300">
-        {icon}
-      </div>
-      <h3 className="font-display text-xl font-bold mb-3 text-crema group-hover:text-ambar transition-colors">{title}</h3>
-      <p className="text-[15px] leading-[1.7] text-crema/45">{desc}</p>
-    </div>
-  );
-}
-
-/* ─── Main App ─── */
+/* ═══════════════════════════════════════════
+   MAIN APP
+   ═══════════════════════════════════════════ */
 export default function App() {
   const [selectedLot, setSelectedLot] = useState(null);
   const [modalLot, setModalLot] = useState(null);
   const [filter, setFilter] = useState("available");
-  const [heroVisible, setHeroVisible] = useState(false);
+  const [heroReady, setHeroReady] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const mapRef = useRef(null);
-
-  // Lock body scroll when modal open
-  useEffect(() => {
-    if (modalLot) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => { document.body.style.overflow = ""; };
-  }, [modalLot]);
+  const [promoImg, setPromoImg] = useState(0);
+  const lotsRef = useRef(null);
 
   const totalLots = LOTS_DATA.length;
   const soldLots = LOTS_DATA.filter((l) => l.sold).length;
   const availableLots = totalLots - soldLots;
 
   const filteredLots =
-    filter === "all"
-      ? LOTS_DATA
-      : filter === "available"
-      ? LOTS_DATA.filter((l) => !l.sold)
-      : LOTS_DATA.filter((l) => l.sold);
+    filter === "all" ? LOTS_DATA
+    : filter === "available" ? LOTS_DATA.filter((l) => !l.sold)
+    : LOTS_DATA.filter((l) => l.sold);
+
+  useEffect(() => { setTimeout(() => setHeroReady(true), 200); }, []);
 
   useEffect(() => {
-    setTimeout(() => setHeroVisible(true), 100);
-  }, []);
+    if (modalLot) document.body.style.overflow = "hidden";
+    else document.body.style.overflow = "";
+    return () => { document.body.style.overflow = ""; };
+  }, [modalLot]);
 
-  const scrollToMap = () => {
-    mapRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const scrollToLots = () => lotsRef.current?.scrollIntoView({ behavior: "smooth" });
 
-  const waLink = (msg) =>
-    `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
+  // Reveal refs for each section
+  const revealPromo = useReveal();
+  const revealProyecto = useReveal();
+  const revealLotes = useReveal();
+  const revealFinanciacion = useReveal();
+  const revealChinacota = useReveal();
+  const revealCTA = useReveal();
+
+  const [statsRef, availCount] = useCounter(availableLots);
+  const [, soldCount] = useCounter(soldLots);
 
   return (
     <div className="font-body bg-fondo text-crema min-h-screen overflow-x-hidden">
-      {/* ─── NAV ─── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-fondo/90 backdrop-blur-2xl border-b border-white/[0.05]">
-        <div className="max-w-[1100px] mx-auto px-6 sm:px-8 py-4 flex justify-between items-center">
-          <span className="font-display font-bold text-base sm:text-lg tracking-[0.2em] text-ambar">
-            ALTOS DEL CHINAQUILLO
-          </span>
 
-          {/* Desktop links */}
-          <div className="hidden md:flex items-center gap-8">
+      {/* ═══ NAV ═══ */}
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.04]" style={{ background: "linear-gradient(180deg, rgba(12,10,8,0.95) 0%, rgba(12,10,8,0.85) 100%)", backdropFilter: "blur(20px) saturate(1.2)" }}>
+        <div className="max-w-[1120px] mx-auto px-6 sm:px-8 h-[64px] flex justify-between items-center">
+          <a href="#" className="font-display font-bold text-[15px] sm:text-[17px] tracking-[0.25em] text-ambar no-underline">
+            ALTOS
+          </a>
+
+          <div className="hidden md:flex items-center gap-1">
             {[
               ["#casa-lote", "Casa + Lote"],
               ["#proyecto", "Proyecto"],
               ["#lotes", "Lotes"],
-              ["#financiacion", "Financiación"],
-              ["#chinacota", "Chinácota"],
+              ["#financiacion", "Pagos"],
+              ["#chinacota", "Ubicación"],
             ].map(([href, label]) => (
-              <a
-                key={href}
-                href={href}
-                className="text-white/50 no-underline text-[13px] font-medium tracking-wide hover:text-ambar transition-colors"
-              >
+              <a key={href} href={href} className="text-white/40 no-underline text-[13px] font-medium px-4 py-2 rounded-lg hover:text-white/80 hover:bg-white/[0.04] transition-all">
                 {label}
               </a>
             ))}
-            <a
-              href={waLink("Hola, quiero información sobre Altos del Chinaquillo")}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-ambar text-[#1a1a1a] px-6 py-2.5 rounded-lg no-underline text-[13px] font-semibold hover:bg-ambar/90 transition-colors"
-            >
+            <a href={waLink("Hola, quiero información sobre Altos del Chinaquillo")} target="_blank" rel="noopener noreferrer"
+              className="ml-3 bg-ambar text-fondo px-5 py-2 rounded-lg no-underline text-[13px] font-semibold hover:bg-ambar/85 transition-colors">
               Contactar
             </a>
           </div>
 
-          {/* Mobile hamburger */}
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="md:hidden bg-transparent border-none text-crema cursor-pointer p-1"
-            aria-label="Menú"
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              {menuOpen ? (
-                <path d="M6 6l12 12M6 18L18 6" />
-              ) : (
-                <path d="M3 6h18M3 12h18M3 18h18" />
-              )}
+          <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden bg-transparent border-none text-crema cursor-pointer p-1.5 -mr-1.5" aria-label="Menú">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              {menuOpen ? <path d="M6 6l12 12M6 18L18 6" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
             </svg>
           </button>
         </div>
 
-        {/* Mobile menu */}
         {menuOpen && (
-          <div className="md:hidden bg-fondo/98 backdrop-blur-2xl border-t border-white/[0.06] px-6 py-5 flex flex-col gap-4">
+          <div className="md:hidden bg-surface/98 backdrop-blur-2xl border-t border-white/[0.04] px-6 py-5 flex flex-col gap-1 animate-[fadeIn_0.2s_ease-out]">
             {[
               ["#casa-lote", "Casa + Lote"],
               ["#proyecto", "Proyecto"],
               ["#lotes", "Lotes"],
-              ["#financiacion", "Financiación"],
-              ["#chinacota", "Chinácota"],
+              ["#financiacion", "Pagos"],
+              ["#chinacota", "Ubicación"],
             ].map(([href, label]) => (
-              <a
-                key={href}
-                href={href}
-                onClick={() => setMenuOpen(false)}
-                className="text-white/70 no-underline text-base font-medium"
-              >
-                {label}
-              </a>
+              <a key={href} href={href} onClick={() => setMenuOpen(false)}
+                className="text-white/60 no-underline text-[15px] font-medium py-3 px-3 rounded-lg hover:bg-white/[0.04] transition-colors">{label}</a>
             ))}
-            <a
-              href={waLink("Hola, quiero información sobre Altos del Chinaquillo")}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-ambar text-[#1a1a1a] px-5 py-3 rounded-lg no-underline text-sm font-semibold text-center mt-1"
-            >
+            <a href={waLink("Hola, quiero información sobre Altos del Chinaquillo")} target="_blank" rel="noopener noreferrer"
+              className="bg-ambar text-fondo px-5 py-3.5 rounded-lg no-underline text-[14px] font-semibold text-center mt-2">
               Contactar por WhatsApp
             </a>
           </div>
         )}
       </nav>
 
-      {/* ─── HERO ─── */}
-      <section className="min-h-screen relative flex flex-col justify-center items-center text-center px-6 sm:px-8 pt-28 pb-12 sm:pt-32 sm:pb-16 overflow-hidden">
-        {/* Background image */}
+      {/* ═══ HERO ═══ */}
+      <section className="relative min-h-screen flex flex-col justify-end px-6 sm:px-8 pb-16 sm:pb-20 pt-32 overflow-hidden">
+        {/* BG Image */}
         <div className="absolute inset-0">
           <img src="/images/Altos_proyecto.jpg" alt="" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(20,18,16,0.55)_0%,rgba(20,18,16,0.75)_40%,rgba(20,18,16,0.97)_100%)]" />
-        </div>
-        {/* Overlay radials */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_20%,rgba(45,74,53,0.25),transparent),radial-gradient(ellipse_60%_40%_at_20%_80%,rgba(92,61,46,0.1),transparent)]" />
-
-        <div
-          className="relative z-10 max-w-[780px] transition-all duration-[1400ms] ease-[cubic-bezier(0.16,1,0.3,1)]"
-          style={{
-            opacity: heroVisible ? 1 : 0,
-            transform: heroVisible ? "translateY(0)" : "translateY(50px)",
-          }}
-        >
-          <div className="inline-flex items-center gap-2 text-[10px] sm:text-[11px] font-semibold tracking-[3px] text-ambar/80 mb-8 px-5 py-2.5 border border-ambar/20 rounded-full bg-ambar/[0.04]">
-            <div className="w-1.5 h-1.5 rounded-full bg-ambar animate-[dotPulse_2s_infinite]" />
-            URBANIZACIÓN CAMPESTRE · CHINÁCOTA
-          </div>
-
-          <h1 className="font-display text-[44px] sm:text-[64px] lg:text-[76px] font-bold leading-[1.02] mb-7 text-crema tracking-tight">
-            Tu lugar en la<br />
-            <span className="text-ambar italic">montaña</span> te espera
-          </h1>
-
-          <p className="text-base sm:text-[18px] leading-[1.7] text-crema/60 max-w-[520px] mx-auto mb-10">
-            Lotes desde 1.000 m² con vías, servicios y vista panorámica. A 5 minutos de Chinácota y 40 de Cúcuta.
-          </p>
-
-          <div className="flex gap-4 justify-center flex-wrap">
-            <button
-              onClick={scrollToMap}
-              className="bg-ambar text-[#1a1a1a] border-none px-8 sm:px-10 py-4 rounded-xl text-[15px] font-semibold cursor-pointer font-body hover:bg-ambar/90 transition-all hover:shadow-[0_8px_30px_rgba(196,149,106,0.25)]"
-            >
-              Ver lotes disponibles
-            </button>
-            <a
-              href={waLink("Hola, quiero agendar una visita a Altos del Chinaquillo")}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-transparent text-crema border border-crema/20 px-8 sm:px-10 py-4 rounded-xl text-[15px] font-medium no-underline hover:border-crema/40 hover:bg-white/[0.03] transition-all"
-            >
-              Agendar visita
-            </a>
-          </div>
+          <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(12,10,8,0.3) 0%, rgba(12,10,8,0.5) 30%, rgba(12,10,8,0.92) 70%, rgba(12,10,8,1) 100%)" }} />
         </div>
 
-        {/* Stats */}
-        <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-8 sm:gap-12 mt-20 sm:mt-24 max-w-[740px] w-full">
-          <div className="col-span-2 sm:col-span-4 h-px bg-gradient-to-r from-transparent via-white/[0.10] to-transparent mb-4" />
-          {[
-            { value: <AnimatedCounter target={availableLots} />, label: "Lotes disponibles", accent: true },
-            { value: <AnimatedCounter target={soldLots} />, label: "Lotes vendidos" },
-            { value: "1.000+", label: "m² por lote" },
-            { value: "0%", label: "Intereses" },
-          ].map((stat, i) => (
-            <div key={i} className="text-center">
-              <div className={`font-display text-[40px] sm:text-[52px] font-bold leading-none tracking-tight ${stat.accent ? "text-ambar" : "text-white/90"}`}>
-                {stat.value}
-              </div>
-              <div className="text-[13px] text-white/35 mt-3 tracking-wide">{stat.label}</div>
+        <div className="relative z-10 max-w-[1120px] mx-auto w-full">
+          <div
+            className="max-w-[680px] transition-all duration-[1600ms] ease-[cubic-bezier(0.16,1,0.3,1)]"
+            style={{ opacity: heroReady ? 1 : 0, transform: heroReady ? "none" : "translateY(60px)" }}
+          >
+            <div className="inline-flex items-center gap-2.5 text-[10px] sm:text-[11px] font-semibold tracking-[3px] text-ambar/80 mb-6 px-4 py-2 border border-ambar/15 rounded-full bg-ambar/[0.05] backdrop-blur-sm">
+              <div className="w-1.5 h-1.5 rounded-full bg-ambar animate-[dotPulse_2s_infinite]" />
+              CHINÁCOTA, NORTE DE SANTANDER
             </div>
-          ))}
+
+            <h1 className="font-display text-[42px] sm:text-[60px] lg:text-[72px] font-bold leading-[1.05] mb-6 tracking-tight">
+              Tu lugar en<br />la <span className="italic text-ambar">montaña</span>
+            </h1>
+
+            <p className="text-[16px] sm:text-[18px] leading-[1.75] text-crema/50 max-w-[480px] mb-10">
+              Lotes desde 1.000 m² con vías, servicios y vista panorámica al valle de Chinácota. Financiación directa sin intereses.
+            </p>
+
+            <div className="flex gap-3 flex-wrap">
+              <button onClick={scrollToLots}
+                className="bg-ambar text-fondo border-none px-8 py-3.5 rounded-xl text-[14px] font-semibold cursor-pointer font-body hover:bg-ambar/85 transition-all inline-flex items-center gap-2">
+                Ver lotes
+                <ArrowIcon className="rotate-90" />
+              </button>
+              <a href={waLink("Hola, quiero agendar una visita a Altos del Chinaquillo")} target="_blank" rel="noopener noreferrer"
+                className="bg-white/[0.06] text-crema/80 border border-white/10 px-8 py-3.5 rounded-xl text-[14px] font-medium no-underline hover:bg-white/[0.10] hover:border-white/20 transition-all backdrop-blur-sm">
+                Agendar visita
+              </a>
+            </div>
+          </div>
+
+          {/* Stats strip */}
+          <div
+            ref={statsRef}
+            className="mt-16 sm:mt-20 pt-8 border-t border-white/[0.06] grid grid-cols-2 sm:grid-cols-4 gap-8 sm:gap-12 transition-all duration-[1200ms] delay-300"
+            style={{ opacity: heroReady ? 1 : 0, transform: heroReady ? "none" : "translateY(30px)" }}
+          >
+            {[
+              { value: availCount, label: "Disponibles", accent: true },
+              { value: soldCount, label: "Vendidos" },
+              { value: "1.000+", label: "m² por lote" },
+              { value: "0%", label: "Intereses" },
+            ].map((s, i) => (
+              <div key={i}>
+                <div className={`font-display text-[36px] sm:text-[44px] font-bold leading-none tracking-tight ${s.accent ? "text-ambar" : "text-crema/80"}`}>
+                  {typeof s.value === "number" ? s.value : s.value}
+                </div>
+                <div className="text-[12px] text-white/30 mt-2 tracking-wider uppercase font-medium">{s.label}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* ─── URGENCY BAR ─── */}
-      <div className="bg-gradient-to-r from-bosque/80 via-bosque/60 to-bosque/80 px-6 sm:px-8 py-4 border-y border-white/[0.04]">
-        <div className="max-w-[800px] mx-auto flex items-center gap-4 sm:gap-5">
-          <div className="w-2 h-2 rounded-full bg-ambar animate-[dotPulse_2s_infinite] shrink-0" />
-          <span className="text-[13px] sm:text-[14px] text-white/80 shrink-0">
-            Solo quedan <strong className="text-ambar">{availableLots} de {totalLots}</strong> lotes
+      {/* ═══ PROGRESS BAR ═══ */}
+      <div className="bg-surface px-6 sm:px-8 py-4 border-y border-white/[0.04]">
+        <div className="max-w-[1120px] mx-auto flex items-center gap-4 sm:gap-5">
+          <span className="text-[12px] sm:text-[13px] text-white/40 shrink-0">
+            <strong className="text-ambar font-semibold">{availableLots}</strong> de {totalLots} disponibles
           </span>
-          <div className="flex-1 h-1.5 bg-white/[0.08] rounded-full min-w-[60px]">
-            <div
-              className="h-full bg-gradient-to-r from-ambar/80 to-ambar rounded-full transition-[width] duration-[1.5s] ease-out"
-              style={{ width: `${(soldLots / totalLots) * 100}%` }}
-            />
+          <div className="flex-1 h-1 bg-white/[0.06] rounded-full overflow-hidden">
+            <div className="h-full bg-ambar/70 rounded-full transition-[width] duration-[2s] ease-out" style={{ width: `${(soldLots / totalLots) * 100}%` }} />
           </div>
-          <span className="text-[13px] sm:text-[14px] font-bold text-ambar shrink-0">{Math.round((soldLots / totalLots) * 100)}%</span>
+          <span className="text-[12px] sm:text-[13px] font-bold text-ambar/60 shrink-0">{Math.round((soldLots / totalLots) * 100)}% vendido</span>
         </div>
       </div>
 
-      {/* ─── CASA + LOTE ─── */}
-      <CasaLotePromo />
-
-      {/* ─── PROYECTO ─── */}
-      <section id="proyecto" className="px-6 sm:px-8 py-20 sm:py-28">
-        <div className="max-w-[1060px] mx-auto">
-          <div className="max-w-[640px] mx-auto text-center mb-14 sm:mb-16">
-            <div className="text-[11px] font-semibold tracking-[4px] text-ambar/70 mb-5">EL PROYECTO</div>
-            <h2 className="font-display text-[32px] sm:text-[48px] font-bold leading-[1.1] mb-6 text-crema tracking-tight">
-              No es solo un lote.<br />
-              <span className="text-ambar">Es donde comienza tu historia.</span>
-            </h2>
-            <p className="text-[15px] sm:text-[17px] leading-[1.8] text-crema/50">
-              Urbanización campestre en la falda de una montaña con vista a Chinácota. Cada lote se entrega con servicios completos, documentación legal al día y financiación directa sin intereses.
-            </p>
+      {/* ═══ CASA + LOTE PROMO ═══ */}
+      <section id="casa-lote" className="px-6 sm:px-8 py-20 sm:py-28 relative noise">
+        <div ref={revealPromo} className="reveal max-w-[1120px] mx-auto relative z-10">
+          {/* Section label */}
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-px bg-ambar/40" />
+            <span className="text-[11px] font-semibold tracking-[3px] text-ambar/60 uppercase">Promoción especial</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {[
-              { icon: "📐", title: "Lotes desde 1.000 m²", desc: "Espacio real para construir tu casa campestre, jardín, zona BBQ y lo que sueñes." },
-              { icon: "💧", title: "Servicios incluidos", desc: "Agua, luz, alcantarillado y vías internas entregados con el lote. Sin costos ocultos." },
-              { icon: "📄", title: "Todo legal", desc: "Licencia de urbanismo, matrícula independiente y certificado de libertad y tradición." },
-              { icon: "🏔️", title: "Vista panorámica", desc: "En la falda de la montaña, con atardeceres hacia el pueblo. Senderos y miradores." },
-              { icon: "📍", title: "5 min de Chinácota", desc: "A 5 minutos del parque principal y 40 minutos de Cúcuta por vía pavimentada." },
-              { icon: "🤝", title: "Sin intereses", desc: "30% de inicial y el 70% financiado hasta 15 meses. Cuotas a tu medida." },
-            ].map((f, i) => (
-              <FeatureCard key={i} {...f} index={i} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── LOTES ─── */}
-      <section id="lotes" ref={mapRef} className="px-6 sm:px-8 py-20 sm:py-28 bg-gradient-to-b from-[#0c0b09] via-[#0a0a08] to-[#0c0b09]">
-        <div className="max-w-[1060px] mx-auto">
-          <div className="max-w-[640px] mx-auto text-center mb-12 sm:mb-14">
-            <div className="text-[11px] font-semibold tracking-[4px] text-ambar/70 mb-5">DISPONIBILIDAD</div>
-            <h2 className="font-display text-[32px] sm:text-[48px] font-bold leading-[1.1] text-white tracking-tight mb-5">
-              Elige tu lote
-            </h2>
-            <p className="text-[15px] sm:text-[17px] leading-[1.7] text-white/45">
-              Haz clic en cualquier lote disponible para ver detalles y simular tu plan de pagos.
-            </p>
-          </div>
-
-          {/* Filters */}
-          <div className="flex justify-center gap-2 sm:gap-3 mb-10 flex-wrap">
-            {[
-              { key: "available", label: `Disponibles (${availableLots})` },
-              { key: "all", label: `Todos (${totalLots})` },
-              { key: "sold", label: `Vendidos (${soldLots})` },
-            ].map((f) => (
-              <button
-                key={f.key}
-                onClick={() => setFilter(f.key)}
-                className={`px-6 py-2.5 rounded-full border text-[13px] font-semibold cursor-pointer font-body transition-all ${
-                  filter === f.key
-                    ? "bg-ambar text-[#1a1a1a] border-ambar"
-                    : "bg-transparent text-white/50 border-white/10 hover:border-white/25 hover:text-white/70"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Lots grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-            {filteredLots.map((lot) => (
-              <LotCard
-                key={lot.id}
-                lot={lot}
-                isSelected={selectedLot?.id === lot.id}
-                onSelect={setSelectedLot}
-                onOpenModal={setModalLot}
-              />
-            ))}
-          </div>
-
-          {/* Hint after grid */}
-          {selectedLot && (
-            <div className="text-center mt-8 text-sm text-ambar/60 animate-[fadeUp_0.5s_ease-out]">
-              ↓ Baja para ver el simulador de pagos del lote <strong className="text-ambar">{selectedLot.name}</strong>
+          <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-10 lg:gap-16 items-center">
+            {/* Image gallery */}
+            <div className="space-y-3">
+              {/* Main image */}
+              <div className="relative rounded-2xl overflow-hidden group aspect-[16/10]">
+                <img
+                  src={PROMO_IMAGES[promoImg].src}
+                  alt={PROMO_IMAGES[promoImg].alt}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              </div>
+              {/* Thumbnails */}
+              <div className="grid grid-cols-3 gap-3">
+                {PROMO_IMAGES.map((img, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setPromoImg(i)}
+                    className={`relative aspect-[4/3] rounded-xl overflow-hidden cursor-pointer transition-all border-2 ${
+                      i === promoImg ? "border-ambar shadow-[0_0_20px_rgba(212,165,116,0.15)]" : "border-transparent opacity-60 hover:opacity-90"
+                    }`}
+                  >
+                    <img src={img.src} alt={img.alt} className="w-full h-full object-cover" />
+                    <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/60 to-transparent">
+                      <span className="text-[10px] font-semibold text-white/80 tracking-wider uppercase">{img.label}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
-          )}
-        </div>
-      </section>
 
-      {/* ─── FINANCIACIÓN ─── */}
-      <section id="financiacion" className="px-6 sm:px-8 py-20 sm:py-28 bg-[#0f0e0c]">
-        <div className="max-w-[1060px] mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
-            <div className="lg:sticky lg:top-28">
-              <div className="text-[11px] font-semibold tracking-[4px] text-ambar/70 mb-5">FINANCIACIÓN</div>
-              <h2 className="font-display text-[32px] sm:text-[48px] font-bold leading-[1.1] mb-6 text-white tracking-tight">
-                Tu lote, a tu ritmo.<br />
-                <span className="text-ambar">Sin intereses.</span>
+            {/* Content */}
+            <div>
+              <h2 className="font-display text-[34px] sm:text-[46px] font-bold leading-[1.08] mb-5 tracking-tight">
+                Casa + Lote<br />
+                <span className="text-ambar italic">lista para vivir</span>
               </h2>
-              <p className="text-[15px] sm:text-[17px] leading-[1.7] text-white/45 mb-10">
-                Financiación directa con el proyecto. Sin bancos, sin papeleos eternos. Tú eliges cómo pagar.
+              <p className="text-[15px] leading-[1.75] text-crema/45 mb-8 max-w-[420px]">
+                115 m² cubiertos con terraza panorámica de 20 m². Diseño moderno con acabados de primera, lista para que solo llegues y disfrutes.
               </p>
 
-              <div className="flex flex-col gap-6">
+              {/* Specs — clean 2x3 grid */}
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4 mb-9">
                 {[
-                  { step: "01", title: "Separa", desc: "Aparta tu lote con el 30% de inicial", value: "30%" },
-                  { step: "02", title: "Financia", desc: "El 70% restante hasta en 15 meses", value: "70%" },
-                  { step: "03", title: "Elige", desc: "Cuotas mensuales, trimestrales o mixtas", value: "Flex" },
-                ].map((s, i) => (
-                  <div key={i} className="flex gap-5 items-start group">
-                    <div className="min-w-[52px] h-[52px] rounded-2xl flex items-center justify-center bg-ambar/[0.08] border border-ambar/15 text-ambar font-display font-bold text-lg group-hover:bg-ambar/[0.15] transition-colors">
-                      {s.value}
+                  { icon: "2", unit: "Habitaciones" },
+                  { icon: "1", unit: "Baño completo" },
+                  { icon: "115", unit: "m² cubiertos" },
+                  { icon: "20", unit: "m² terraza" },
+                  { icon: "Sala", unit: "social" },
+                  { icon: "Comedor", unit: "+ cocina" },
+                ].map((spec, i) => (
+                  <div key={i} className="flex items-baseline gap-3">
+                    <span className="font-display text-2xl font-bold text-ambar leading-none">{spec.icon}</span>
+                    <span className="text-[13px] text-crema/40 font-medium">{spec.unit}</span>
+                  </div>
+                ))}
+              </div>
+
+              <a href={waLink("Hola, me interesa la promoción Casa + Lote de Altos del Chinaquillo. Quiero saber precios y disponibilidad.")}
+                target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-2.5 bg-ambar text-fondo px-8 py-3.5 rounded-xl text-[14px] font-semibold no-underline hover:bg-ambar/85 transition-all">
+                <WhatsAppIcon size={18} />
+                Consultar precio
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ PROYECTO ═══ */}
+      <section id="proyecto" className="px-6 sm:px-8 py-20 sm:py-28 bg-surface">
+        <div ref={revealProyecto} className="reveal max-w-[1120px] mx-auto">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-px bg-ambar/40" />
+            <span className="text-[11px] font-semibold tracking-[3px] text-ambar/60 uppercase">El proyecto</span>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-10 lg:gap-16 items-start">
+            {/* Left text */}
+            <div>
+              <h2 className="font-display text-[32px] sm:text-[44px] font-bold leading-[1.1] mb-6 tracking-tight">
+                No es solo tierra.<br />
+                <span className="text-ambar italic">Es tu patrimonio.</span>
+              </h2>
+              <p className="text-[15px] leading-[1.8] text-crema/40 mb-8">
+                Urbanización campestre con licencia de urbanismo, servicios instalados y escritura individual. Cada lote incluye vía de acceso, conexión a servicios públicos y documentación al día.
+              </p>
+              {/* Image peek */}
+              <div className="rounded-2xl overflow-hidden aspect-[16/9]">
+                <img src="/Gallery/DJI_0723.jpg" alt="Vista aérea" className="w-full h-full object-cover hover:scale-[1.03] transition-transform duration-700" />
+              </div>
+            </div>
+
+            {/* Right features */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[
+                { title: "Lotes desde 1.000 m²", desc: "Espacio real para tu casa, jardín y zona social. Sin vecinos encima.", icon: "01" },
+                { title: "Servicios incluidos", desc: "Agua, luz y alcantarillado entregados. Sin costos de conexión.", icon: "02" },
+                { title: "Todo legal", desc: "Matrícula independiente, licencia de urbanismo y certificado de libertad.", icon: "03" },
+                { title: "Vista panorámica", desc: "En la falda de la montaña con vista al valle y atardeceres únicos.", icon: "04" },
+                { title: "A 5 min del pueblo", desc: "Chinácota a 5 minutos, Cúcuta a 40. Vía pavimentada.", icon: "05" },
+                { title: "Financiación 0%", desc: "30% de inicial, 70% en cuotas hasta 15 meses. Sin bancos.", icon: "06" },
+              ].map((f, i) => (
+                <div key={i} className="group p-6 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:border-ambar/15 hover:bg-white/[0.04] transition-all duration-400">
+                  <span className="text-[11px] font-bold text-ambar/30 tracking-wider font-display">{f.icon}</span>
+                  <h3 className="font-display text-lg font-bold text-crema mt-2 mb-2 group-hover:text-ambar transition-colors">{f.title}</h3>
+                  <p className="text-[13px] leading-[1.7] text-crema/35">{f.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ GALLERY STRIP ═══ */}
+      <div className="flex overflow-hidden h-[200px] sm:h-[280px]">
+        {GALLERY_IMAGES.map((img, i) => (
+          <div key={i} className="flex-1 min-w-0 relative group overflow-hidden">
+            <img src={img.src} alt={img.alt} className="w-full h-full object-cover group-hover:scale-[1.08] transition-transform duration-700" />
+            <div className="absolute inset-0 bg-fondo/30 group-hover:bg-fondo/10 transition-colors duration-500" />
+          </div>
+        ))}
+      </div>
+
+      {/* ═══ LOTES ═══ */}
+      <section id="lotes" ref={lotsRef} className="px-6 sm:px-8 py-20 sm:py-28">
+        <div ref={revealLotes} className="reveal max-w-[1120px] mx-auto">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-px bg-ambar/40" />
+            <span className="text-[11px] font-semibold tracking-[3px] text-ambar/60 uppercase">Disponibilidad</span>
+          </div>
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10">
+            <h2 className="font-display text-[32px] sm:text-[44px] font-bold leading-[1.1] tracking-tight">
+              Elige tu lote
+            </h2>
+            {/* Filters */}
+            <div className="flex gap-1.5 bg-surface rounded-lg p-1 border border-white/[0.04]">
+              {[
+                { key: "available", label: `Disponibles (${availableLots})` },
+                { key: "all", label: `Todos (${totalLots})` },
+                { key: "sold", label: `Vendidos (${soldLots})` },
+              ].map((f) => (
+                <button key={f.key} onClick={() => setFilter(f.key)}
+                  className={`px-4 py-2 rounded-md text-[12px] font-semibold cursor-pointer font-body transition-all ${
+                    filter === f.key ? "bg-ambar/15 text-ambar" : "bg-transparent text-white/35 hover:text-white/55"
+                  }`}>
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Lot grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            {filteredLots.map((lot) => {
+              if (lot.sold) {
+                return (
+                  <div key={lot.id} className="rounded-xl border border-white/[0.03] bg-white/[0.01] p-5 opacity-35">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-display text-base font-bold text-white/50">{lot.name}</div>
+                        <div className="text-[12px] text-white/20 mt-0.5">{lot.area.toLocaleString()} m²</div>
+                      </div>
+                      <span className="text-[9px] font-bold tracking-[2px] text-white/15 uppercase">Vendido</span>
                     </div>
-                    <div className="pt-0.5">
-                      <div className="text-[15px] font-bold text-crema">{s.title}</div>
-                      <div className="text-[14px] text-white/40 mt-0.5">{s.desc}</div>
+                  </div>
+                );
+              }
+              const isSelected = selectedLot?.id === lot.id;
+              return (
+                <div
+                  key={lot.id}
+                  onClick={() => { setSelectedLot(lot); setModalLot(lot); }}
+                  className={`group relative rounded-xl border p-5 cursor-pointer transition-all duration-300 ${
+                    isSelected
+                      ? "border-ambar/40 bg-ambar/[0.06]"
+                      : "border-white/[0.05] bg-white/[0.02] hover:border-ambar/20 hover:bg-white/[0.04] hover:-translate-y-0.5"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-[dotPulse_2s_infinite]" />
+                    <span className="text-[10px] font-semibold tracking-[1.5px] text-emerald-400/70 uppercase">Disponible</span>
+                  </div>
+                  <div className="font-display text-xl font-bold text-crema group-hover:text-ambar transition-colors">{lot.name}</div>
+                  <div className="text-[12px] text-white/30 mt-0.5">{lot.area.toLocaleString()} m²</div>
+                  <div className="mt-4 pt-3 border-t border-white/[0.04] flex items-end justify-between">
+                    <div>
+                      <div className="text-[10px] text-white/20 uppercase tracking-wider mb-0.5">Desde</div>
+                      <div className="font-display text-xl font-bold text-ambar">{formatCOP(lot.price)}</div>
+                    </div>
+                    <span className="text-[11px] text-white/20 group-hover:text-ambar/50 transition-colors flex items-center gap-1">
+                      Ver detalles <ArrowIcon className="w-3 h-3" />
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ FINANCIACIÓN ═══ */}
+      <section id="financiacion" className="px-6 sm:px-8 py-20 sm:py-28 bg-surface relative noise">
+        <div ref={revealFinanciacion} className="reveal max-w-[1120px] mx-auto relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
+            {/* Left info */}
+            <div className="lg:sticky lg:top-24">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-px bg-ambar/40" />
+                <span className="text-[11px] font-semibold tracking-[3px] text-ambar/60 uppercase">Financiación</span>
+              </div>
+              <h2 className="font-display text-[32px] sm:text-[44px] font-bold leading-[1.1] mb-6 tracking-tight">
+                Sin bancos.<br /><span className="text-ambar italic">Sin intereses.</span>
+              </h2>
+              <p className="text-[15px] leading-[1.8] text-crema/40 mb-10 max-w-[400px]">
+                Financiación directa con el proyecto. Tú eliges el plazo y la frecuencia de pago. Sin papeleos ni aprobaciones eternas.
+              </p>
+
+              <div className="space-y-6">
+                {[
+                  { num: "30%", title: "Separa tu lote", desc: "Con el 30% de inicial apartas tu lote inmediatamente" },
+                  { num: "70%", title: "Financia el resto", desc: "El saldo a cuotas mensuales o trimestrales" },
+                  { num: "15", title: "Meses de plazo", desc: "Hasta 15 meses sin intereses ni recargos" },
+                ].map((step, i) => (
+                  <div key={i} className="flex gap-5 items-start group">
+                    <div className="min-w-[48px] h-[48px] rounded-xl flex items-center justify-center bg-ambar/[0.06] border border-ambar/10 text-ambar font-display font-bold text-[15px] group-hover:bg-ambar/[0.12] transition-colors">
+                      {step.num}
+                    </div>
+                    <div>
+                      <div className="text-[14px] font-semibold text-crema/80">{step.title}</div>
+                      <div className="text-[13px] text-white/30 mt-0.5">{step.desc}</div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            <PaymentSimulator lot={selectedLot} />
+            {/* Right: Simulator */}
+            <SimulatorCard lot={selectedLot} />
           </div>
         </div>
       </section>
 
-      {/* ─── CHINÁCOTA ─── */}
+      {/* ═══ CHINÁCOTA ═══ */}
       <section id="chinacota" className="px-6 sm:px-8 py-20 sm:py-28">
-        <div className="max-w-[1060px] mx-auto">
-          <div className="max-w-[640px] mx-auto text-center mb-14 sm:mb-16">
-            <div className="text-[11px] font-semibold tracking-[4px] text-ambar/70 mb-5">CHINÁCOTA, NORTE DE SANTANDER</div>
-            <h2 className="font-display text-[32px] sm:text-[48px] font-bold leading-[1.1] mb-6 text-crema tracking-tight">
-              El pueblo donde todos<br />
-              <span className="text-ambar">quieren descansar</span>
-            </h2>
-            <p className="text-[15px] sm:text-[17px] leading-[1.8] text-crema/50">
-              "El Balcón de Oriente" — destino preferido de los cucuteños. Clima primaveral todo el año, paisajes de montaña y una comunidad cálida.
-            </p>
+        <div ref={revealChinacota} className="reveal max-w-[1120px] mx-auto">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-px bg-ambar/40" />
+            <span className="text-[11px] font-semibold tracking-[3px] text-ambar/60 uppercase">Ubicación</span>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-14 sm:mb-16">
-            {[
-              { icon: "🌡️", title: "Clima ideal", desc: "22°C promedio todo el año. Primavera permanente." },
-              { icon: "🚗", title: "40 min de Cúcuta", desc: "Carretera pavimentada en buen estado." },
-              { icon: "🏡", title: "+1.000 cabañas", desc: "Centro turístico consolidado del área metropolitana." },
-              { icon: "☕", title: "Ruta del café", desc: "Fincas cafeteras, restaurantes de autor y gastronomía." },
-              { icon: "⛪", title: "Historia viva", desc: "Aquí se firmó el tratado de paz de los Mil Días." },
-              { icon: "🥾", title: "Senderismo", desc: "Rutas al Páramo Mejué y senderos entre montañas." },
-            ].map((c, i) => (
-              <FeatureCard key={i} {...c} index={i} />
-            ))}
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.3fr] gap-10 lg:gap-16 items-start mb-14">
+            <div>
+              <h2 className="font-display text-[32px] sm:text-[44px] font-bold leading-[1.1] mb-6 tracking-tight">
+                Chinácota<br />
+                <span className="text-ambar italic">El balcón de oriente</span>
+              </h2>
+              <p className="text-[15px] leading-[1.8] text-crema/40">
+                Destino preferido del área metropolitana de Cúcuta. Clima primaveral, paisajes de montaña y comunidad tranquila. A solo 40 minutos por vía pavimentada.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {[
+                { val: "22°", unit: "Promedio", desc: "todo el año" },
+                { val: "40", unit: "Minutos", desc: "de Cúcuta" },
+                { val: "5", unit: "Minutos", desc: "del centro" },
+                { val: "1.000+", unit: "Cabañas", desc: "zona turística" },
+                { val: "Café", unit: "& gastronomía", desc: "ruta cafetera" },
+                { val: "Páramo", unit: "Mejué", desc: "senderismo" },
+              ].map((s, i) => (
+                <div key={i} className="p-4 rounded-xl bg-surface border border-white/[0.04]">
+                  <div className="font-display text-xl font-bold text-ambar leading-none">{s.val}</div>
+                  <div className="text-[12px] font-medium text-crema/50 mt-1">{s.unit}</div>
+                  <div className="text-[11px] text-white/25 mt-0.5">{s.desc}</div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Map */}
-          <div className="rounded-2xl overflow-hidden border border-white/[0.06] shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
+          <div className="rounded-2xl overflow-hidden border border-white/[0.04]">
             <iframe
               src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3950.5!2d-72.5971193!3d7.5878019!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8e662f55648a28a5%3A0x4a45b26dc7566adf!2sAltos%20del%20Chinaquillo!5e0!3m2!1ses-419!2sco!4v1690000000000!5m2!1ses-419!2sco"
-              width="100%"
-              height="400"
-              style={{ border: 0 }}
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              title="Ubicación Altos del Chinaquillo"
+              width="100%" height="380" style={{ border: 0 }} allowFullScreen loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade" title="Ubicación"
             />
           </div>
         </div>
       </section>
 
-      {/* ─── CTA FINAL ─── */}
-      <section className="px-6 sm:px-8 py-20 sm:py-28 text-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-fondo via-bosque/30 to-fondo" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_50%,rgba(45,74,53,0.3),transparent)]" />
-
-        <div className="max-w-[600px] mx-auto relative z-10">
-          <SectionDivider />
-          <h2 className="font-display text-[36px] sm:text-[56px] font-bold text-crema mb-5 mt-8 tracking-tight leading-[1.05]">
-            Solo quedan<br /><span className="text-ambar">{availableLots} lotes.</span>
+      {/* ═══ FINAL CTA ═══ */}
+      <section className="px-6 sm:px-8 py-20 sm:py-28 text-center relative overflow-hidden noise">
+        <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 80% 60% at 50% 50%, rgba(30,58,40,0.25), transparent)" }} />
+        <div ref={revealCTA} className="reveal max-w-[560px] mx-auto relative z-10">
+          <h2 className="font-display text-[36px] sm:text-[52px] font-bold tracking-tight leading-[1.08] mb-5">
+            Solo quedan<br /><span className="text-ambar italic">{availableLots} lotes</span>
           </h2>
-          <p className="text-[15px] sm:text-[17px] text-white/50 mb-10 leading-[1.7]">
+          <p className="text-[15px] text-crema/40 mb-10 leading-[1.7]">
             Agenda tu visita y conoce el proyecto en persona. Sin compromiso.
           </p>
-          <div className="flex gap-4 justify-center flex-wrap">
-            <a
-              href={waLink("Hola, quiero agendar una visita a Altos del Chinaquillo")}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2.5 bg-[#25D366] text-white px-9 sm:px-11 py-4 sm:py-[18px] rounded-xl text-[15px] sm:text-[16px] font-semibold no-underline hover:bg-[#20bd5a] transition-all hover:shadow-[0_8px_30px_rgba(37,211,102,0.3)]"
-            >
-              <WhatsAppIcon size={22} />
+          <div className="flex gap-3 justify-center flex-wrap">
+            <a href={waLink("Hola, quiero agendar una visita a Altos del Chinaquillo")} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-2.5 bg-[#25D366] text-white px-8 py-4 rounded-xl text-[14px] font-semibold no-underline hover:bg-[#20bd5a] transition-all hover:shadow-[0_8px_30px_rgba(37,211,102,0.2)]">
+              <WhatsAppIcon size={20} />
               Escribir por WhatsApp
             </a>
-            <a
-              href={`tel:+${WHATSAPP_NUMBER}`}
-              className="inline-flex items-center gap-2.5 bg-transparent text-crema px-9 sm:px-11 py-4 sm:py-[18px] rounded-xl text-[15px] sm:text-[16px] font-medium no-underline border border-white/15 hover:border-white/30 hover:bg-white/[0.03] transition-all"
-            >
+            <a href={`tel:+${WHATSAPP_NUMBER}`}
+              className="inline-flex items-center gap-2 bg-transparent text-crema/60 px-8 py-4 rounded-xl text-[14px] font-medium no-underline border border-white/10 hover:border-white/25 hover:text-crema transition-all">
               Llamar ahora
             </a>
           </div>
         </div>
       </section>
 
-      {/* ─── FOOTER ─── */}
-      <footer className="px-6 sm:px-8 pt-16 pb-8 border-t border-white/[0.05] bg-[#0a0908]">
-        <div className="max-w-[1060px] mx-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr] gap-10 sm:gap-12 mb-12">
+      {/* ═══ FOOTER ═══ */}
+      <footer className="px-6 sm:px-8 pt-14 pb-8 border-t border-white/[0.04] bg-surface">
+        <div className="max-w-[1120px] mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-10 mb-10">
             <div>
-              <div className="font-display text-lg font-bold tracking-[0.15em] text-ambar mb-4">ALTOS DEL CHINAQUILLO</div>
-              <p className="text-[14px] leading-[1.8] text-white/35 max-w-[320px]">
-                Urbanización campestre en Chinácota, Norte de Santander. Lotes desde 1.000 m² con servicios, documentación y financiación directa.
+              <div className="font-display text-base font-bold tracking-[0.2em] text-ambar mb-3">ALTOS</div>
+              <p className="text-[13px] leading-[1.8] text-white/25 max-w-[280px]">
+                Urbanización campestre en Chinácota. Lotes desde 1.000 m² con servicios y financiación directa.
               </p>
             </div>
             <div>
-              <div className="text-[11px] font-semibold tracking-[3px] text-ambar/60 mb-4 uppercase">Ubicación</div>
-              <p className="text-[14px] leading-[1.8] text-white/35">
-                Vereda La Victoria, Chinácota<br />
-                Norte de Santander, Colombia<br />
-                A 5 min del parque principal
+              <div className="text-[10px] font-semibold tracking-[3px] text-ambar/40 mb-3 uppercase">Ubicación</div>
+              <p className="text-[13px] leading-[1.8] text-white/25">
+                Vereda La Victoria, Chinácota<br />Norte de Santander, Colombia
               </p>
             </div>
             <div>
-              <div className="text-[11px] font-semibold tracking-[3px] text-ambar/60 mb-4 uppercase">Contacto</div>
-              <p className="text-[14px] leading-[1.8] text-white/35">
-                WhatsApp: +57 300 123 4567<br />
-                @altos_del_chinaquillo
+              <div className="text-[10px] font-semibold tracking-[3px] text-ambar/40 mb-3 uppercase">Contacto</div>
+              <p className="text-[13px] leading-[1.8] text-white/25">
+                WhatsApp: +57 300 123 4567<br />@altos_del_chinaquillo
               </p>
             </div>
           </div>
-          <div className="pt-6 border-t border-white/[0.04] text-[12px] text-white/20 text-center tracking-wide">
-            © {new Date().getFullYear()} Altos del Chinaquillo. Todos los derechos reservados.
+          <div className="pt-5 border-t border-white/[0.03] text-[11px] text-white/15 text-center tracking-wider">
+            © {new Date().getFullYear()} Altos del Chinaquillo
           </div>
         </div>
       </footer>
 
-      {/* ─── LOT MODAL ─── */}
+      {/* ═══ LOT MODAL ═══ */}
       {modalLot && <LotModal lot={modalLot} onClose={() => setModalLot(null)} />}
 
-      {/* ─── FLOATING WHATSAPP ─── */}
-      <a
-        href={waLink("Hola, quiero información sobre los lotes disponibles en Altos del Chinaquillo")}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-5 right-5 sm:bottom-7 sm:right-7 w-14 h-14 sm:w-[60px] sm:h-[60px] rounded-full bg-[#25D366] flex items-center justify-center shadow-[0_4px_20px_rgba(37,211,102,0.35)] z-[99] animate-[float_3s_ease-in-out_infinite] no-underline hover:scale-110 transition-transform"
-        aria-label="WhatsApp"
-      >
-        <WhatsAppIcon size={28} />
+      {/* ═══ FLOATING WHATSAPP ═══ */}
+      <a href={waLink("Hola, quiero información sobre los lotes disponibles")} target="_blank" rel="noopener noreferrer"
+        className="fixed bottom-5 right-5 sm:bottom-7 sm:right-7 w-14 h-14 rounded-full bg-[#25D366] flex items-center justify-center shadow-[0_4px_20px_rgba(37,211,102,0.3)] z-[90] animate-[float_3s_ease-in-out_infinite] no-underline hover:scale-110 transition-transform"
+        aria-label="WhatsApp">
+        <WhatsAppIcon size={26} />
+      </a>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   SIMULATOR CARD (extracted)
+   ═══════════════════════════════════════════ */
+function SimulatorCard({ lot }) {
+  const [months, setMonths] = useState(12);
+  const [paymentType, setPaymentType] = useState("mensual");
+
+  const priceM = lot ? lot.price : 180;
+  const priceCOP = priceM * 1_000_000;
+  const inicial = priceCOP * 0.3;
+  const financiado = priceCOP * 0.7;
+
+  let numPayments, cuota;
+  if (paymentType === "mensual") { numPayments = months; cuota = financiado / months; }
+  else { numPayments = Math.ceil(months / 3); cuota = financiado / numPayments; }
+
+  return (
+    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 sm:p-8 backdrop-blur-sm">
+      <div className="mb-7">
+        <div className="text-[11px] font-semibold tracking-[3px] text-ambar/40 uppercase mb-2">Simulador</div>
+        <div className="font-display text-2xl font-bold text-crema">Plan de pagos</div>
+        <div className="text-[13px] text-white/30 mt-1">
+          {lot ? `Lote ${lot.name} · ${lot.area.toLocaleString()} m²` : "Selecciona un lote arriba"}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mb-6">
+        <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.04]">
+          <span className="text-[10px] text-white/25 uppercase tracking-wider font-semibold">Total</span>
+          <div className="font-display text-lg font-bold text-crema mt-1">{formatFullCOP(priceCOP)}</div>
+        </div>
+        <div className="p-4 rounded-xl bg-ambar/[0.05] border border-ambar/10">
+          <span className="text-[10px] text-ambar/40 uppercase tracking-wider font-semibold">Inicial</span>
+          <div className="font-display text-lg font-bold text-ambar mt-1">{formatFullCOP(inicial)}</div>
+        </div>
+      </div>
+
+      <div className="h-px bg-white/[0.04] mb-6" />
+
+      {/* Slider */}
+      <div className="mb-5">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[10px] text-white/25 uppercase tracking-wider font-semibold">Plazo</span>
+          <span className="font-display font-bold text-ambar text-lg">{months} meses</span>
+        </div>
+        <input type="range" min={6} max={15} value={months} onChange={(e) => setMonths(Number(e.target.value))} className="w-full" />
+        <div className="flex justify-between text-[11px] text-white/15"><span>6</span><span>15</span></div>
+      </div>
+
+      {/* Payment type */}
+      <div className="flex gap-2 mb-6">
+        {["mensual", "trimestral"].map((t) => (
+          <button key={t} onClick={() => setPaymentType(t)}
+            className={`flex-1 py-2.5 rounded-lg text-[12px] font-semibold cursor-pointer font-body transition-all border ${
+              paymentType === t ? "bg-ambar/15 text-ambar border-ambar/20" : "bg-transparent text-white/30 border-white/[0.04] hover:border-white/10"
+            }`}>
+            {t === "mensual" ? "Mensuales" : "Trimestrales"}
+          </button>
+        ))}
+      </div>
+
+      {/* Result */}
+      <div className="text-center p-6 rounded-xl bg-ambar/[0.06] border border-ambar/10 mb-6">
+        <div className="text-[12px] text-white/35 mb-2">{numPayments} cuotas {paymentType === "mensual" ? "mensuales" : "trimestrales"}</div>
+        <div className="font-display text-[36px] sm:text-[40px] font-bold text-ambar leading-none">{formatFullCOP(cuota)}</div>
+        <div className="text-[11px] text-white/20 mt-2">Sin intereses &middot; Financiación directa</div>
+      </div>
+
+      <a href={waLink(`Hola, estoy interesado en el lote ${lot ? lot.name : ""} de Altos del Chinaquillo.`)}
+        target="_blank" rel="noopener noreferrer"
+        className="flex items-center justify-center gap-2.5 w-full py-3.5 bg-[#25D366] text-white rounded-xl text-[14px] font-semibold no-underline hover:bg-[#20bd5a] transition-all">
+        <WhatsAppIcon size={18} />
+        Quiero este lote
       </a>
     </div>
   );
