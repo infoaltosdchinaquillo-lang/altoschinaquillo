@@ -373,7 +373,8 @@ export default function App() {
         </div>
 
         {/* Stats */}
-        <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-8 mt-16 sm:mt-20 pt-8 sm:pt-10 border-t border-white/[0.08] max-w-[700px] w-full">
+        <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-8 sm:gap-10 mt-16 sm:mt-20 max-w-[760px] w-full">
+          <div className="col-span-2 sm:col-span-4 h-px bg-gradient-to-r from-transparent via-white/[0.12] to-transparent mb-2" />
           {[
             { value: <AnimatedCounter target={availableLots} />, label: "Lotes disponibles", accent: true },
             { value: <AnimatedCounter target={soldLots} />, label: "Lotes vendidos" },
@@ -381,29 +382,29 @@ export default function App() {
             { value: "0%", label: "Intereses" },
           ].map((stat, i) => (
             <div key={i} className="text-center">
-              <div className={`font-display text-3xl sm:text-[42px] font-bold leading-none ${stat.accent ? "text-ambar" : "text-white"}`}>
+              <div className={`font-display text-4xl sm:text-[48px] font-bold leading-none ${stat.accent ? "text-ambar" : "text-white"}`}>
                 {stat.value}
               </div>
-              <div className="text-xs text-white/45 mt-2 tracking-wide">{stat.label}</div>
+              <div className="text-[13px] text-white/40 mt-3 tracking-wide font-medium">{stat.label}</div>
             </div>
           ))}
         </div>
       </section>
 
       {/* ─── URGENCY BAR ─── */}
-      <div className="bg-[linear-gradient(90deg,#2D4A35,#1a3325)] px-5 py-3.5">
-        <div className="max-w-[1200px] mx-auto flex items-center gap-3 sm:gap-4 flex-wrap">
-          <div className="w-2 h-2 rounded-full bg-ambar animate-[dotPulse_2s_infinite]" />
-          <span className="text-sm text-white/90">
-            Solo quedan <strong>{availableLots} de {totalLots}</strong> lotes disponibles
+      <div className="bg-[linear-gradient(90deg,#2D4A35,#1a3325)] px-5 py-4">
+        <div className="max-w-[900px] mx-auto flex items-center gap-4 sm:gap-5">
+          <div className="w-2.5 h-2.5 rounded-full bg-ambar animate-[dotPulse_2s_infinite] shrink-0" />
+          <span className="text-sm sm:text-[15px] text-white/90 shrink-0">
+            Solo quedan <strong className="text-ambar">{availableLots} de {totalLots}</strong> lotes
           </span>
-          <div className="flex-1 h-1.5 bg-white/10 rounded-full min-w-[80px]">
+          <div className="flex-1 h-2 bg-white/10 rounded-full min-w-[60px]">
             <div
               className="h-full bg-[linear-gradient(90deg,#C4956A,#e0b88a)] rounded-full transition-[width] duration-[1.5s] ease-out"
               style={{ width: `${(soldLots / totalLots) * 100}%` }}
             />
           </div>
-          <span className="text-sm font-bold text-ambar">{Math.round((soldLots / totalLots) * 100)}% vendido</span>
+          <span className="text-sm sm:text-[15px] font-bold text-ambar shrink-0">{Math.round((soldLots / totalLots) * 100)}% vendido</span>
         </div>
       </div>
 
@@ -419,7 +420,7 @@ export default function App() {
             Altos del Chinaquillo es una urbanización campestre ubicada en la falda de una montaña con vista panorámica hacia el pueblo de Chinácota. Cada lote se entrega con servicios completos, documentación legal al día y financiación directa sin intereses.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
             {[
               { icon: "📐", title: "Lotes desde 1.000 m²", desc: "Espacio real para construir tu casa campestre, jardín, zona BBQ y lo que sueñes." },
               { icon: "💧", title: "Servicios incluidos", desc: "Agua, luz, alcantarillado y vías internas entregados con el lote. Sin costos ocultos." },
@@ -428,10 +429,10 @@ export default function App() {
               { icon: "📍", title: "3 min de Santa María", desc: "A 5 minutos del parque principal de Chinácota y 40 minutos de Cúcuta por vía pavimentada." },
               { icon: "🤝", title: "Sin intereses", desc: "30% de inicial y el 70% financiado hasta 15 meses. Cuotas mensuales, trimestrales o mixtas." },
             ].map((f, i) => (
-              <div key={i} className="p-7 sm:p-8 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:bg-ambar/[0.06] hover:-translate-y-1.5 transition-all duration-300">
-                <div className="text-[32px] mb-4">{f.icon}</div>
-                <h3 className="text-lg font-semibold mb-2.5 text-crema">{f.title}</h3>
-                <p className="text-sm leading-relaxed text-crema/50">{f.desc}</p>
+              <div key={i} className="p-7 sm:p-8 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:bg-ambar/[0.06] hover:-translate-y-1 transition-all duration-300 group">
+                <div className="text-[36px] mb-5 group-hover:scale-110 transition-transform duration-300 inline-block">{f.icon}</div>
+                <h3 className="font-display text-xl font-bold mb-3 text-crema">{f.title}</h3>
+                <p className="text-[15px] leading-relaxed text-crema/50">{f.desc}</p>
               </div>
             ))}
           </div>
@@ -471,30 +472,37 @@ export default function App() {
           </div>
 
           {/* Lots grid */}
-          <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredLots.map((lot) => (
               <div
                 key={lot.id}
                 onClick={() => !lot.sold && setSelectedLot(lot)}
-                className={`p-4 sm:px-5 sm:py-4 rounded-xl border transition-all duration-300 ${
+                className={`group relative rounded-2xl border transition-all duration-300 overflow-hidden ${
                   lot.sold
-                    ? "border-white/[0.06] bg-white/[0.02] opacity-40 cursor-default"
+                    ? "border-white/[0.05] bg-white/[0.02] cursor-default"
                     : selectedLot?.id === lot.id
-                    ? "border-ambar bg-ambar/[0.12] cursor-pointer"
-                    : "border-ambar/25 bg-ambar/[0.04] cursor-pointer hover:-translate-y-1 hover:shadow-[0_8px_32px_rgba(196,149,106,0.3)]"
+                    ? "border-ambar bg-ambar/[0.10] cursor-pointer ring-1 ring-ambar/40"
+                    : "border-white/[0.08] bg-white/[0.03] cursor-pointer hover:-translate-y-1 hover:border-ambar/40 hover:shadow-[0_12px_40px_rgba(196,149,106,0.15)]"
                 }`}
               >
-                <div className="flex justify-between items-center mb-2.5">
-                  <span className="text-[15px] font-semibold">{lot.name}</span>
-                  {lot.sold ? (
-                    <span className="text-[9px] font-bold tracking-wider text-white/30 px-2 py-0.5 bg-white/5 rounded">VENDIDO</span>
-                  ) : (
-                    <span className="text-[9px] font-bold tracking-wider text-bosque px-2 py-0.5 bg-bosque/30 rounded">DISPONIBLE</span>
+                <div className={`p-5 sm:p-6 ${lot.sold ? "opacity-35" : ""}`}>
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <div>
+                      <h4 className="font-display text-xl font-bold text-crema leading-tight">{lot.name}</h4>
+                      <span className="text-sm text-white/40 mt-1 block">{lot.area.toLocaleString()} m²</span>
+                    </div>
+                    {lot.sold ? (
+                      <span className="shrink-0 text-[10px] font-bold tracking-widest text-white/25 px-3 py-1.5 bg-white/[0.06] rounded-full uppercase">Vendido</span>
+                    ) : (
+                      <span className="shrink-0 text-[10px] font-bold tracking-widest text-emerald-400 px-3 py-1.5 bg-emerald-500/[0.12] rounded-full uppercase">Disponible</span>
+                    )}
+                  </div>
+                  {!lot.sold && (
+                    <div className="flex items-center justify-between pt-4 border-t border-white/[0.06]">
+                      <span className="font-display text-2xl font-bold text-ambar">{formatCOP(lot.price)}</span>
+                      <span className="text-xs text-white/30 group-hover:text-ambar/60 transition-colors">Ver simulador →</span>
+                    </div>
                   )}
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-[13px] text-white/40">{lot.area.toLocaleString()} m²</span>
-                  {!lot.sold && <span className="text-base font-bold text-ambar">{formatCOP(lot.price)}</span>}
                 </div>
               </div>
             ))}
@@ -552,7 +560,7 @@ export default function App() {
             Conocida como "El Balcón de Oriente", Chinácota es el destino preferido de los cucuteños para descansar. Clima primaveral todo el año, paisajes de montaña, gastronomía, historia y una comunidad cálida.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-12 sm:mb-14">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 mb-12 sm:mb-14">
             {[
               { icon: "🌡️", title: "Clima ideal", desc: "Temperatura promedio de 22°C durante todo el año. Ni frío ni calor: primavera permanente." },
               { icon: "🚗", title: "40 min de Cúcuta", desc: "Por carretera pavimentada en buen estado. Transporte público constante." },
@@ -561,10 +569,10 @@ export default function App() {
               { icon: "⛪", title: "Historia viva", desc: "Aquí se firmó el tratado de paz de la Guerra de los Mil Días. Patrimonio colonial conservado." },
               { icon: "🥾", title: "Senderismo", desc: "Rutas hacia el Páramo Mejué, el Cerro de la Vieja y senderos ecológicos entre montañas." },
             ].map((c, i) => (
-              <div key={i} className="p-7 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:scale-[1.03] transition-transform duration-300">
-                <div className="text-[32px] mb-3">{c.icon}</div>
-                <h3 className="text-[17px] font-semibold mb-2 text-crema">{c.title}</h3>
-                <p className="text-sm leading-relaxed text-crema/50">{c.desc}</p>
+              <div key={i} className="p-7 sm:p-8 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:-translate-y-1 hover:bg-ambar/[0.04] transition-all duration-300 group">
+                <div className="text-[36px] mb-5 group-hover:scale-110 transition-transform duration-300 inline-block">{c.icon}</div>
+                <h3 className="font-display text-xl font-bold mb-3 text-crema">{c.title}</h3>
+                <p className="text-[15px] leading-relaxed text-crema/50">{c.desc}</p>
               </div>
             ))}
           </div>
