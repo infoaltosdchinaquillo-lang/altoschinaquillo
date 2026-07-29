@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { LOTS, TOTAL, SOLD, AVAIL, AREA_MIN, AREA_MAX, cop, wa, proyectar } from "../data";
-import { IconWa, IconRight, IconClose, useReveal } from "../components/ui";
+import { IconWa, IconClose, useReveal } from "../components/ui";
 import LotMap from "../components/LotMap";
 import LotModal from "../components/LotModal";
 
@@ -163,14 +163,106 @@ export default function Lotes() {
       )}
 
       <style>{`
-        .lt-grid { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 24px; align-items: start; }
-        .lt-map { position: sticky; top: 96px; }
-        .lt-list { display: flex; flex-direction: column; gap: 10px; max-height: 82vh; overflow-y: auto; padding: 2px 8px 2px 2px; }
+        /* ── Layout ── */
+        .lt-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 28px; align-items: start; }
+        .lt-map { position: sticky; top: 94px; }
+        .lt-list {
+          display: flex; flex-direction: column; gap: 7px;
+          max-height: 84vh; overflow-y: auto;
+          padding: 2px 10px 2px 2px;
+          scrollbar-gutter: stable;
+        }
         .lt-list::-webkit-scrollbar { width: 4px; }
-        @media (max-width: 1000px) {
-          .lt-grid { grid-template-columns: 1fr; }
+        .lt-list::-webkit-scrollbar-thumb { background: rgba(201,154,99,0.25); border-radius: 999px; }
+
+        /* ── Fila ── */
+        .lt-row {
+          display: grid;
+          grid-template-columns: 8px minmax(0,1fr) auto 30px 22px;
+          align-items: center;
+          column-gap: 14px;
+          padding: 15px 18px 15px 16px;
+          border-radius: 14px;
+          border: 1px solid rgba(255,255,255,0.055);
+          background: rgba(255,255,255,0.018);
+          cursor: pointer;
+          transition: background .35s ease, border-color .35s ease, transform .35s cubic-bezier(.16,1,.3,1);
+        }
+        .lt-row:hover, .lt-row[data-active] {
+          background: linear-gradient(100deg, rgba(201,154,99,0.11), rgba(255,255,255,0.03) 60%);
+          border-color: rgba(201,154,99,0.42);
+          transform: translateX(3px);
+        }
+
+        .lt-dot {
+          width: 7px; height: 7px; border-radius: 50%;
+          background: #8FBB68; justify-self: center;
+          transition: box-shadow .35s ease;
+        }
+        .lt-row:hover .lt-dot, .lt-row[data-active] .lt-dot { box-shadow: 0 0 0 4px rgba(143,187,104,.20); }
+
+        .lt-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+        .lt-name {
+          font-family: 'Fraunces', serif; font-size: 18px; line-height: 1.25;
+          letter-spacing: -.015em; color: #E8DFD3;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          transition: color .3s ease;
+        }
+        .lt-row:hover .lt-name, .lt-row[data-active] .lt-name { color: #FBF3E7; }
+        .lt-area { font-size: 12px; color: #8A8072; letter-spacing: .015em; white-space: nowrap; }
+        .lt-sep { margin: 0 6px; opacity: .5; }
+
+        .lt-price { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; white-space: nowrap; }
+        .lt-price-main {
+          font-family: 'Fraunces', serif; font-variant-numeric: tabular-nums;
+          font-size: 20px; line-height: 1.1; letter-spacing: -.02em; color: #D9AE7B;
+        }
+        .lt-price-sub { font-size: 11px; color: #7A7164; font-variant-numeric: tabular-nums; }
+
+        /* Botón comparar — tamaño fijo, nunca se aplasta */
+        .lt-cmp {
+          width: 30px; height: 30px; flex: 0 0 30px; padding: 0;
+          border-radius: 9px; cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          background: rgba(255,255,255,.045);
+          border: 1px solid rgba(255,255,255,.09);
+          color: #6E6659;
+          opacity: 0; transition: all .3s ease;
+        }
+        .lt-cmp svg { width: 12px; height: 12px; }
+        .lt-row:hover .lt-cmp, .lt-row[data-active] .lt-cmp, .lt-cmp[data-on] { opacity: 1; }
+        .lt-cmp:hover { background: rgba(201,154,99,.16); border-color: rgba(201,154,99,.45); color: #D9AE7B; }
+        .lt-cmp[data-on] {
+          background: rgba(201,154,99,.20); border-color: rgba(201,154,99,.6); color: #E4BE90;
+        }
+
+        .lt-go {
+          width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
+          color: #5E574C; transition: color .3s ease, transform .3s ease;
+        }
+        .lt-go svg { width: 15px; height: 15px; }
+        .lt-row:hover .lt-go, .lt-row[data-active] .lt-go { color: #D9AE7B; transform: translateX(3px); }
+
+        /* Vendido */
+        .lt-sold {
+          display: grid; grid-template-columns: 8px minmax(0,1fr) auto;
+          align-items: center; column-gap: 14px;
+          padding: 13px 18px 13px 16px; border-radius: 14px;
+          border: 1px solid rgba(255,255,255,.03);
+          opacity: .38; transition: opacity .3s ease;
+        }
+        .lt-sold:hover { opacity: .62; }
+        .lt-sold .lt-dot { background: rgba(150,140,128,.7); box-shadow: none; }
+
+        @media (max-width: 1020px) {
+          .lt-grid { grid-template-columns: 1fr; gap: 22px; }
           .lt-map { position: relative; top: 0; }
           .lt-list { max-height: none; overflow: visible; padding: 0; }
+          .lt-cmp { opacity: 1; }
+        }
+        @media (max-width: 420px) {
+          .lt-row { grid-template-columns: 8px minmax(0,1fr) auto 22px; column-gap: 10px; padding: 14px; }
+          .lt-cmp { display: none; }
         }
       `}</style>
     </>
@@ -183,19 +275,12 @@ export default function Lotes() {
 function LotRow({ lot, active, inCompare, onEnter, onLeave, onClick, onCompare }) {
   if (lot.sold) {
     return (
-      <div onMouseEnter={onEnter} onMouseLeave={onLeave}
-        style={{
-          display: "grid", gridTemplateColumns: "1fr auto", alignItems: "center", gap: 16,
-          padding: "16px 20px", borderRadius: 16,
-          border: "1px solid rgba(255,255,255,0.035)",
-          background: active ? "rgba(255,255,255,0.028)" : "transparent",
-          opacity: active ? 0.75 : 0.4, transition: "all 0.35s ease",
-        }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 12, minWidth: 0 }}>
-          <span style={{ fontFamily: "Fraunces, serif", fontSize: 17, color: "#9A8F80", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {lot.name}
-          </span>
-          <span className="meta" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}>{lot.area.toLocaleString("es-CO")} m²</span>
+      <div className="lt-sold" onMouseEnter={onEnter} onMouseLeave={onLeave}
+        style={active ? { opacity: 0.62 } : undefined}>
+        <span className="lt-dot" />
+        <div className="lt-info">
+          <span className="lt-name" style={{ fontSize: 16, color: "#9A8F80" }}>{lot.name}</span>
+          <span className="lt-area">{lot.area.toLocaleString("es-CO")} m²</span>
         </div>
         <span style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", color: "#6F675B", whiteSpace: "nowrap" }}>
           Vendido
@@ -204,78 +289,54 @@ function LotRow({ lot, active, inCompare, onEnter, onLeave, onClick, onCompare }
     );
   }
 
+  const cuota = Math.round((lot.price * 1e6 * 0.7) / 12 / 1e5) / 10; // en millones, 1 decimal
+
   return (
     <div
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
       onClick={onClick}
-      className="glass"
-      style={{
-        padding: "18px 20px", cursor: "pointer",
-        display: "grid", gridTemplateColumns: "1fr auto auto", alignItems: "center", gap: 18,
-        borderColor: active ? "rgba(201,154,99,0.5)" : undefined,
-        transform: active ? "translateY(-2px)" : undefined,
-        background: active
-          ? "linear-gradient(158deg, rgba(201,154,99,0.09) 0%, rgba(255,255,255,0.025) 55%, rgba(255,255,255,0.012) 100%)"
-          : undefined,
-        boxShadow: active
-          ? "inset 0 1px 0 rgba(255,255,255,0.15), 0 18px 40px -20px rgba(0,0,0,0.8), 0 0 38px -14px rgba(201,154,99,0.4)"
-          : undefined,
-        transition: "all 0.4s cubic-bezier(0.16,1,0.3,1)",
-      }}
+      className="lt-row"
+      data-active={active ? "1" : undefined}
     >
+      {/* Indicador */}
+      <span className="lt-dot" />
+
       {/* Nombre + área */}
-      <div style={{ minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#8FBB68", flexShrink: 0,
-            boxShadow: active ? "0 0 0 4px rgba(143,187,104,0.18)" : "none", transition: "box-shadow 0.4s ease" }} />
-          <span style={{
-            fontFamily: "Fraunces, serif", fontSize: 19, lineHeight: 1.25,
-            color: active ? "#F7EFE3" : "#E8DFD3", letterSpacing: "-0.015em",
-            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", transition: "color 0.35s ease",
-          }}>
-            {lot.name}
-          </span>
-        </div>
-        <div className="meta" style={{ fontSize: 12.5, marginTop: 5, paddingLeft: 15 }}>
-          {lot.area.toLocaleString("es-CO")} m² · {cop(Math.round(lot.price * 1e6 / lot.area))}/m²
-        </div>
+      <div className="lt-info">
+        <span className="lt-name">{lot.name}</span>
+        <span className="lt-area">
+          {lot.area.toLocaleString("es-CO")} m²
+          <span className="lt-sep">·</span>
+          {(lot.price * 1e6 / lot.area / 1000).toFixed(0)} mil/m²
+        </span>
       </div>
 
       {/* Precio */}
-      <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-        <div className="num gold" style={{ fontSize: 22, lineHeight: 1 }}>${lot.price}M</div>
-        <div className="meta" style={{ fontSize: 11, marginTop: 5 }}>
-          cuota {cop(Math.round(lot.price * 1e6 * 0.7 / 12 / 1000) * 1000).replace(/\s?COP/, "")}
-        </div>
+      <div className="lt-price">
+        <span className="lt-price-main">${lot.price}M</span>
+        <span className="lt-price-sub">{cuota}M × 12</span>
       </div>
 
-      {/* Acciones */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-        <button
-          onClick={(e) => { e.stopPropagation(); onCompare(); }}
-          title={inCompare ? "Quitar de comparación" : "Añadir a comparación"}
-          aria-label="Comparar"
-          style={{
-            width: 32, height: 32, borderRadius: "50%", cursor: "pointer", display: "flex",
-            alignItems: "center", justifyContent: "center", padding: 0,
-            background: inCompare ? "rgba(201,154,99,0.20)" : "rgba(255,255,255,0.05)",
-            border: inCompare ? "1px solid rgba(201,154,99,0.55)" : "1px solid rgba(255,255,255,0.10)",
-            color: inCompare ? "#D9AE7B" : "#7D7466", transition: "all 0.35s ease",
-          }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            {inCompare ? <path d="M5 12l5 5L20 7"/> : <path d="M12 5v14M5 12h14"/>}
-          </svg>
-        </button>
-        <span style={{
-          width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-          background: active ? "linear-gradient(150deg,#E5BC8B,#C99A63)" : "rgba(255,255,255,0.05)",
-          border: active ? "none" : "1px solid rgba(255,255,255,0.10)",
-          color: active ? "#17110B" : "#7D7466", transition: "all 0.4s cubic-bezier(0.16,1,0.3,1)",
-        }}>
-          <IconRight s={13} />
-        </span>
-      </div>
+      {/* Comparar */}
+      <button
+        className="lt-cmp"
+        data-on={inCompare ? "1" : undefined}
+        onClick={(e) => { e.stopPropagation(); onCompare(); }}
+        title={inCompare ? "Quitar de comparación" : "Añadir a comparación"}
+        aria-label="Comparar"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+          {inCompare ? <path d="M5 12l5 5L20 7"/> : <path d="M12 5v14M5 12h14"/>}
+        </svg>
+      </button>
+
+      {/* Abrir */}
+      <span className="lt-go">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M9 6l6 6-6 6"/>
+        </svg>
+      </span>
     </div>
   );
 }

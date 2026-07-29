@@ -39,7 +39,7 @@ export default function LotMap({ lots, hovered, selected, onHover, onSelect }) {
         style={{
           position: "relative",
           aspectRatio: "1400 / 2102",
-          maxHeight: "72vh",
+          maxHeight: "84vh",
           overflow: "hidden",
           cursor: zoom > 1 ? (drag ? "grabbing" : "grab") : "default",
           background: "#0B0908",
