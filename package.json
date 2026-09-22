@@ -4,12 +4,16 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "sync:maplibre": "node scripts/sync-maplibre-worker.mjs",
+    "predev": "npm run sync:maplibre",
     "dev": "vite",
+    "prebuild": "npm run sync:maplibre",
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview"
   },
   "dependencies": {
+    "maplibre-gl": "^6.3.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.18.2"

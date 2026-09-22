@@ -7,6 +7,7 @@ import Financiacion from "./pages/Financiacion";
 import Ubicacion from "./pages/Ubicacion";
 import Contacto from "./pages/Contacto";
 import Editor from "./pages/Editor";
+import Terreno from "./pages/Terreno";
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="/ubicacion" element={<Ubicacion />} />
         <Route path="/contacto" element={<Contacto />} />
         <Route path="/editor" element={<Editor />} />
+        <Route path="/terreno" element={<Terreno />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>

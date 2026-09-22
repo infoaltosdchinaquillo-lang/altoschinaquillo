@@ -1,8 +1,10 @@
-import { useState, useMemo } from "react";
+import { lazy, Suspense, useState, useMemo } from "react";
 import { LOTS, TOTAL, SOLD, AVAIL, AREA_MIN, AREA_MAX, cop, wa, proyectar } from "../data";
 import { IconWa, IconClose, useReveal } from "../components/ui";
-import LotMap from "../components/LotMap";
 import LotModal from "../components/LotModal";
+
+/* MapLibre pesa ~250 KB gzip: se descarga solo al entrar a esta página */
+const Terrain3D = lazy(() => import("../components/Terrain3D"));
 
 const ORDENES = [
   { k: "precio-asc",  l: "Menor precio" },
@@ -51,7 +53,7 @@ export default function Lotes() {
             Elige tu <span className="serif-em">lote</span>
           </h1>
           <p className="lead" style={{ marginTop: 24, maxWidth: 560 }}>
-            Pasa el cursor sobre un lote para verlo marcado en el plano. Haz click para ver fotos, financiación y proyección de valorización.
+            Pasa el cursor sobre un lote para verlo en la montaña. Haz click para ver fotos, financiación y proyección de valorización.
           </p>
 
           <div style={{ display: "flex", gap: 28, flexWrap: "wrap", marginTop: 32 }}>
@@ -110,9 +112,17 @@ export default function Lotes() {
           {/* Grid */}
           <div className="lt-grid">
             <div className="lt-map">
-              <LotMap lots={LOTS} hovered={hovered} selected={modal} onHover={setHovered} onSelect={setModal} />
+              <Suspense
+                fallback={
+                  <div className="glass" style={{ height: "min(78vh, 760px)", display: "grid", placeItems: "center" }}>
+                    <span className="meta">Cargando mapa…</span>
+                  </div>
+                }>
+                <Terrain3D lots={LOTS} hovered={hovered} selected={modal} onHover={setHovered} onSelect={setModal}
+                  alto="min(78vh, 760px)" />
+              </Suspense>
               <p className="meta" style={{ marginTop: 12, fontSize: 12.5 }}>
-                Plano real del proyecto con delimitación de lotes.
+                Lotes del plano topográfico oficial sobre el relieve real de la montaña. Cambia a «Plano» para verlo desde arriba.
               </p>
             </div>
 

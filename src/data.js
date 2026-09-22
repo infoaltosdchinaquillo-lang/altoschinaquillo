@@ -6,8 +6,8 @@
    ▸ SOLD: pendiente de confirmar contra el plano de vendidos.
    ▸ PRECIOS: calculados con PRECIO_M2 (ver abajo). CAMBIAR
      por los precios reales antes de publicar.
-   ▸ x / y: posición en % sobre /images/plano_lotes.jpg.
-     Ajustar en /editor y pegar el JSON aquí.
+   ▸ UBICACIÓN: cada lote se dibuja con su polígono real del
+     plano oficial P-1 — ver src/lotesGeo.js (mismo `id`).
    ══════════════════════════════════════════════════ */
 
 export const WA = "573102384907";
@@ -87,37 +87,20 @@ const RAW = [
   ["Secouya",            1065.39,  false],
 ];
 
-/* Posiciones sobre el plano (%). Ajustar en /editor. */
-const POS = {
-  1:{x:66,y:11}, 2:{x:73,y:9},  3:{x:80,y:8},  4:{x:70,y:16}, 5:{x:77,y:14},
-  6:{x:63,y:19}, 7:{x:72,y:22}, 8:{x:79,y:20}, 9:{x:67,y:25}, 10:{x:74,y:27},
-  11:{x:40,y:28},12:{x:47,y:29},13:{x:54,y:28},14:{x:61,y:29},15:{x:68,y:31},
-  16:{x:34,y:33},17:{x:41,y:34},18:{x:48,y:34},19:{x:55,y:34},20:{x:62,y:35},
-  21:{x:30,y:39},22:{x:37,y:40},23:{x:44,y:41},24:{x:51,y:41},25:{x:58,y:41},
-  26:{x:66,y:40},27:{x:33,y:47},28:{x:40,y:48},29:{x:47,y:48},30:{x:56,y:47},
-  31:{x:28,y:55},32:{x:35,y:55},33:{x:44,y:56},34:{x:52,y:56},35:{x:60,y:55},
-  36:{x:27,y:62},37:{x:34,y:62},38:{x:42,y:63},39:{x:50,y:64},40:{x:58,y:63},
-  41:{x:31,y:69},42:{x:38,y:70},43:{x:46,y:70},44:{x:55,y:69},45:{x:64,y:70},
-  46:{x:36,y:77},47:{x:44,y:78},48:{x:52,y:78},49:{x:60,y:77},
-};
-
-export const LOTS = RAW.map(([name, area, sold], i) => {
-  const id = i + 1;
-  return {
-    id,
-    name,
-    area: Math.round(area),
-    areaExacta: area,
-    price: precioDe(area),
-    sold,
-    x: POS[id]?.x ?? 50,
-    y: POS[id]?.y ?? 50,
-  };
-});
+export const LOTS = RAW.map(([name, area, sold], i) => ({
+  id: i + 1,
+  name,
+  area: Math.round(area),
+  areaExacta: area,
+  price: precioDe(area),
+  sold,
+}));
 
 /* ══════════════════════════════════════════════════
    IMÁGENES
    ══════════════════════════════════════════════════ */
+/* Foto aérea del dron con las lindes dibujadas a mano. Sirve como imagen
+   de presentación, NO como mapa: tiene perspectiva y no es a escala. */
 export const MAPA_PLANO = "/images/plano_lotes.jpg";
 export const MAPA_AEREO = "/Gallery/DJI_0710.jpg";
 
