@@ -14,8 +14,28 @@
 export const WA = "573102384907";
 export const TEL_DISPLAY = "+57 310 238 4907";
 
-/* Valorización anual estimada — AJUSTAR con dato real de la zona */
-export const VALORIZACION_ANUAL = 0.11;
+/* ── Valorización anual de referencia ──
+   Antes había aquí un 11 % inventado, presentado como "comportamiento
+   histórico de la zona". No existe un índice de precios de LOTES para
+   Chinácota, así que se usa la referencia pública más cercana y se dice
+   de dónde sale:
+
+   ▸ Vivienda nueva en Colombia: +8,47 % anual (DANE, IPVN, I trim. 2026).
+   ▸ Inflación: 6,24 % anual (DANE, IPC, agosto 2026).
+   ▸ Cúcuta fue la ciudad con MENOR incremento del país ese trimestre
+     (1,52 % trimestral, frente a 2,79 % nacional).
+
+   Por eso se toma 7 %: por debajo del índice nacional de vivienda y
+   apenas por encima de la inflación. Es deliberadamente conservador —
+   el mercado de referencia de este proyecto está bajo el promedio.
+   Además son índices de VIVIENDA, no de lotes: sirven como referencia,
+   nunca como promesa de rentabilidad. */
+export const VALORIZACION_ANUAL = 0.07;
+
+export const VALORIZACION_NOTA =
+  "Referencia: la vivienda nueva en Colombia subió 8,47 % anual (DANE, IPVN, I trimestre 2026) " +
+  "y la inflación anual fue 6,24 % (DANE, agosto 2026). Usamos 7 % anual, por debajo del índice " +
+  "nacional, como referencia conservadora. No es una promesa ni una garantía de rentabilidad.";
 
 /* ══════════════════════════════════════════════════
    LOTES — 49 unidades vendibles
@@ -45,7 +65,7 @@ const RAW = [
   ["El Manzano"   ,  1001.92, true , 175],
   ["El Nogal"     ,  1001.78, false, 220],
   ["El Paraíso"   ,  1102.81, false, 195],
-  ["El Pardillo"  ,  1257.56, true , 202],
+  ["El Pardillo"  ,  1257.56, false, 202],
   ["El Refugio"   ,  1040.05, true , 182],
   ["El Roble"     ,  1422.52, false, 195],
   ["El Sauce"     ,  1103.18, false, 195],
@@ -63,7 +83,7 @@ const RAW = [
   ["Los Olivos"   ,  1011.55, true , 177],
   ["Los Pinos"    ,  1004.63, false, 195],
   ["Madroño"      ,  1101.99, true , 193],
-  ["Magnolia"     ,  1115.75, false, 240],
+  ["Magnolia"     ,  1115.75, false, 250],
   ["Mirlo"        ,  1213.11, false, 230],
   ["Mochuelo"     ,  1834.59, false, 220],
   ["Monte Olimpo" ,  1010.63, false, 250],
@@ -74,13 +94,40 @@ const RAW = [
   ["Secouya"      ,  1065.39, false, 195],
 ];
 
-export const LOTS = RAW.map(([name, area, sold, price], i) => ({
+/* ── Tipo de terreno ──
+   Es lo que explica que dos lotes de área parecida cuesten distinto:
+   uno plano se construye con mucha menos inversión en movimiento de
+   tierra y cimentación que uno inclinado. Hoy esa razón solo está en
+   la cabeza del vendedor; mostrarla convierte una diferencia de precio
+   en un argumento.
+
+   ⚠ FALTA EL DATO. Debe clasificarlo el propietario, lote por lote: el
+   relieve público (~30 m) no tiene resolución para medir la pendiente
+   de un lote ya terrazado. Mientras `terreno` esté vacío, el sitio
+   simplemente no muestra nada — nunca inventa una clasificación. */
+export const TERRENO = {
+  plano: {
+    titulo: "Plano",
+    nota: "Listo para construir: poca inversión en movimiento de tierra.",
+  },
+  leve: {
+    titulo: "Pendiente leve",
+    nota: "Requiere algo de adecuación, sin obras mayores.",
+  },
+  inclinado: {
+    titulo: "Inclinado",
+    nota: "Pide más inversión en cimentación; a cambio, mejor vista y mejor precio por m².",
+  },
+};
+
+export const LOTS = RAW.map(([name, area, sold, price, terreno], i) => ({
   id: i + 1,
   name,
   area: Math.round(area),
   areaExacta: area,
   price,          // millones de pesos
   sold,
+  terreno,        // "plano" | "leve" | "inclinado" | undefined
 }));
 
 /* ══════════════════════════════════════════════════
@@ -135,6 +182,53 @@ export const PRECIO_MIN = Math.min(...DISPONIBLES.map((l) => l.price));
 export const PRECIO_MAX = Math.max(...DISPONIBLES.map((l) => l.price));
 export const AREA_MIN = Math.min(...DISPONIBLES.map((l) => l.area));
 export const AREA_MAX = Math.max(...DISPONIBLES.map((l) => l.area));
+
+/* ══════════════════════════════════════════════════
+   PLAN DE PAGO
+   ══════════════════════════════════════════════════
+   Financiación directa con el proyecto, sin intereses.
+
+   Las CUOTAS EXTRAORDINARIAS son dos al año (junio y diciembre):
+   aprovechan las primas para bajar la cuota mensual sin alargar
+   el plazo. Es el ajuste que más amplía el número de compradores
+   que pueden pagar.
+
+   ⚠ Estos valores son la OFERTA COMERCIAL del proyecto: cambiarlos
+   cambia lo que se le promete al cliente. Confirmar con el
+   propietario antes de publicar.
+   ══════════════════════════════════════════════════ */
+export const PLAN = {
+  inicialPct: 20,     // antes 30
+  meses: 24,          // antes 12–15
+  mesesMax: 36,
+  inicialMin: 10,
+  extraordinarias: true,
+  extraPct: 5,        // cada extraordinaria = 5% del valor del lote
+};
+
+export function planPago(precio, opc = {}) {
+  const {
+    inicialPct = PLAN.inicialPct,
+    meses = PLAN.meses,
+    extraordinarias = PLAN.extraordinarias,
+    extraPct = PLAN.extraPct,
+    frecuencia = "mensual",
+  } = opc;
+
+  const inicial = precio * (inicialPct / 100);
+  const saldo = precio - inicial;
+
+  /* dos al año, solo las que caben en el plazo */
+  const nExtra = extraordinarias ? Math.floor(meses / 6) : 0;
+  const valorExtra = precio * (extraPct / 100);
+  /* nunca pueden superar el saldo: si lo hacen, se recortan */
+  const totalExtra = Math.min(nExtra * valorExtra, saldo);
+
+  const nCuotas = frecuencia === "mensual" ? meses : Math.ceil(meses / 3);
+  const cuota = Math.max(0, (saldo - totalExtra) / nCuotas);
+
+  return { inicial, saldo, nExtra, valorExtra, totalExtra, nCuotas, cuota, frecuencia };
+}
 
 /* ══════════════════════════════════════════════════
    HELPERS

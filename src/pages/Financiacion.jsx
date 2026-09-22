@@ -1,17 +1,18 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { DISPONIBLES, cop, wa, proyectar, PRECIO_MIN, PRECIO_MAX } from "../data";
+import { DISPONIBLES, PLAN, cop, wa, planPago, proyectar, PRECIO_MIN, PRECIO_MAX, VALORIZACION_NOTA } from "../data";
 import { IconWa, IconCheck, IconRight, useReveal, Head } from "../components/ui";
 
 const PASOS = [
-  { n: "30%", t: "Separa tu lote", d: "Con la inicial apartas tu lote de inmediato y firmas promesa de compraventa." },
-  { n: "70%", t: "Financia el saldo", d: "En cuotas mensuales o trimestrales, sin intereses ni recargos." },
-  { n: "15",  t: "Meses de plazo", d: "Tú eliges el plazo. Al terminar de pagar, recibes la escritura pública." },
+  { n: `${PLAN.inicialPct}%`, t: "Separa tu lote", d: "Con la inicial apartas tu lote de inmediato y firmas promesa de compraventa." },
+  { n: `${100 - PLAN.inicialPct}%`, t: "Financia el saldo", d: "En cuotas mensuales o trimestrales, sin intereses ni recargos." },
+  { n: `${PLAN.mesesMax}`, t: "Meses de plazo", d: "Tú eliges el plazo. Dos cuotas extraordinarias al año, en junio y diciembre, bajan la mensual." },
 ];
 
 const FAQ = [
   { q: "¿Necesito aprobación bancaria?", a: "No. La financiación es directa con el proyecto, sin intermediarios ni estudio de crédito bancario. Solo requerimos documento de identidad y firma de la promesa de compraventa." },
-  { q: "¿Cobran intereses?", a: "No. El valor del lote no cambia por financiarlo. Pagas exactamente el mismo precio en 6 meses que en 15." },
+  { q: "¿Cobran intereses?", a: `No. El valor del lote no cambia por financiarlo. Pagas exactamente el mismo precio en 6 meses que en ${PLAN.mesesMax}.` },
+  { q: "¿Qué son las cuotas extraordinarias?", a: `Son dos pagos al año, en junio y diciembre, de ${PLAN.extraPct}% del valor del lote cada uno. Sirven para aprovechar las primas: al abonarlas, la cuota mensual baja sin que tengas que alargar el plazo. Son opcionales — si prefieres, puedes dejar todo en cuotas iguales.` },
   { q: "¿Puedo abonar de más o pagar antes?", a: "Sí. Puedes hacer abonos extraordinarios en cualquier momento sin penalidad, y eso reduce el plazo o el valor de las cuotas." },
   { q: "¿Cuándo recibo la escritura?", a: "La escritura pública se otorga al completar el 100% del pago. Desde el primer momento firmas promesa de compraventa que protege tu compra." },
   { q: "¿Qué pasa si me atraso en una cuota?", a: "Contáctanos antes de que ocurra. Manejamos cada caso de forma personalizada y buscamos una reprogramación que funcione." },
@@ -20,9 +21,10 @@ const FAQ = [
 
 export default function Financiacion() {
   const [lotId, setLotId] = useState(DISPONIBLES[0]?.id);
-  const [mo, setMo] = useState(12);
+  const [mo, setMo] = useState(PLAN.meses);
   const [tipo, setTipo] = useState("mensual");
-  const [inicialPct, setInicialPct] = useState(30);
+  const [inicialPct, setInicialPct] = useState(PLAN.inicialPct);
+  const [extras, setExtras] = useState(PLAN.extraordinarias);
   const [anios, setAnios] = useState(5);
   const [openFaq, setOpenFaq] = useState(null);
 
@@ -30,10 +32,11 @@ export default function Financiacion() {
 
   const lot = DISPONIBLES.find((l) => l.id === lotId) || DISPONIBLES[0];
   const price = lot.price * 1e6;
-  const ini = price * (inicialPct / 100);
-  const fin = price - ini;
-  const num = tipo === "mensual" ? mo : Math.ceil(mo / 3);
-  const cuota = fin / num;
+  const plan = planPago(price, { inicialPct, meses: mo, extraordinarias: extras, frecuencia: tipo });
+  const ini = plan.inicial;
+  const fin = plan.saldo;
+  const num = plan.nCuotas;
+  const cuota = plan.cuota;
   const futuro = proyectar(lot.price, anios);
 
   return (
@@ -86,10 +89,11 @@ export default function Financiacion() {
                     <span className="meta">Cuota inicial</span>
                     <span className="num gold" style={{ fontSize: 24 }}>{inicialPct}%</span>
                   </div>
-                  <input type="range" min={30} max={70} step={5} value={inicialPct} onChange={(e) => setInicialPct(+e.target.value)} />
+                  <input type="range" min={PLAN.inicialMin} max={50} step={5} value={inicialPct} onChange={(e) => setInicialPct(+e.target.value)} />
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#6F675B" }}>
-                    <span>30% mínimo</span><span>70%</span>
+                    <span>{PLAN.inicialMin}% mínimo</span><span>50%</span>
                   </div>
+                  <p className="meta" style={{ marginTop: 8, fontSize: 12.5 }}>{cop(ini)} para separar</p>
                 </div>
 
                 {/* Plazo */}
@@ -98,9 +102,9 @@ export default function Financiacion() {
                     <span className="meta">Plazo</span>
                     <span className="num gold" style={{ fontSize: 24 }}>{mo} meses</span>
                   </div>
-                  <input type="range" min={6} max={15} value={mo} onChange={(e) => setMo(+e.target.value)} />
+                  <input type="range" min={6} max={PLAN.mesesMax} value={mo} onChange={(e) => setMo(+e.target.value)} />
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#6F675B" }}>
-                    <span>6 meses</span><span>15 meses</span>
+                    <span>6 meses</span><span>{PLAN.mesesMax} meses</span>
                   </div>
                 </div>
 
@@ -117,6 +121,30 @@ export default function Financiacion() {
                     </button>
                   ))}
                 </div>
+
+                {/* Extraordinarias — usan las primas de junio y diciembre */}
+                <button onClick={() => setExtras((v) => !v)} className="glass"
+                  style={{ width: "100%", marginTop: 16, padding: "16px 20px", borderRadius: 16, cursor: "pointer",
+                    textAlign: "left", display: "flex", alignItems: "center", gap: 14,
+                    border: extras ? "1px solid rgba(201,154,99,0.55)" : "1px solid rgba(255,255,255,0.08)" }}>
+                  <span style={{ width: 20, height: 20, borderRadius: 6, flexShrink: 0,
+                    background: extras ? "linear-gradient(150deg,#E5BC8B,#C99A63)" : "rgba(255,255,255,0.06)",
+                    display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {extras && (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#17110B" strokeWidth="3.4">
+                        <path d="M5 12l5 5L20 7" />
+                      </svg>
+                    )}
+                  </span>
+                  <span>
+                    <span style={{ fontSize: 14, color: "#E8DFD3" }}>Pagar con las primas</span>
+                    <span className="meta" style={{ display: "block", fontSize: 12.5, marginTop: 3 }}>
+                      {plan.nExtra > 0
+                        ? `${plan.nExtra} cuota${plan.nExtra !== 1 ? "s" : ""} extraordinaria${plan.nExtra !== 1 ? "s" : ""} de ${cop(plan.valorExtra)} en junio y diciembre`
+                        : `Dos al año, de ${PLAN.extraPct}% cada una — el plazo es muy corto para aplicarlas`}
+                    </span>
+                  </span>
+                </button>
               </div>
 
               {/* ── Resultado ── */}
@@ -133,6 +161,9 @@ export default function Financiacion() {
                     ["Valor total", cop(price)],
                     [`Inicial (${inicialPct}%)`, cop(ini)],
                     ["Saldo a financiar", cop(fin)],
+                    ...(plan.totalExtra > 0
+                      ? [[`Extraordinarias (${plan.nExtra} × ${cop(plan.valorExtra)})`, cop(plan.totalExtra)]]
+                      : []),
                     ["Total a pagar", cop(price)],
                   ].map(([k, v], i) => (
                     <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 14, padding: "14px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
@@ -196,8 +227,7 @@ export default function Financiacion() {
               </div>
 
               <p className="meta" style={{ marginTop: 18, fontSize: 12, lineHeight: 1.7 }}>
-                Proyección con valorización anual estimada del 11% basada en el comportamiento histórico de la zona.
-                No constituye garantía de rentabilidad ni recomendación de inversión.
+                {VALORIZACION_NOTA}
               </p>
             </div>
           </div>

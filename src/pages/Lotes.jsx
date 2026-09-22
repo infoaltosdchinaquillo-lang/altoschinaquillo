@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, useMemo } from "react";
-import { LOTS, TOTAL, SOLD, AVAIL, AREA_MIN, AREA_MAX, cop, wa, proyectar } from "../data";
+import { LOTS, TOTAL, SOLD, AVAIL, AREA_MIN, AREA_MAX, cop, wa, planPago, proyectar, VALORIZACION_NOTA } from "../data";
 import { IconWa, IconClose, useReveal } from "../components/ui";
 import LotModal from "../components/LotModal";
 
@@ -299,7 +299,8 @@ function LotRow({ lot, active, inCompare, onEnter, onLeave, onClick, onCompare }
     );
   }
 
-  const cuota = Math.round((lot.price * 1e6 * 0.7) / 12 / 1e5) / 10; // en millones, 1 decimal
+  const { cuota, nCuotas } = planPago(lot.price * 1e6);
+  const cuotaM = Math.round(cuota / 1e5) / 10; // en millones, 1 decimal
 
   return (
     <div
@@ -325,7 +326,7 @@ function LotRow({ lot, active, inCompare, onEnter, onLeave, onClick, onCompare }
       {/* Precio */}
       <div className="lt-price">
         <span className="lt-price-main">${lot.price}M</span>
-        <span className="lt-price-sub">{cuota}M × 12</span>
+        <span className="lt-price-sub">{cuotaM}M × {nCuotas}</span>
       </div>
 
       {/* Comparar */}
@@ -417,7 +418,7 @@ function CompareModal({ lots, onClose, onRemove }) {
           </div>
 
           <p className="meta" style={{ marginTop: 20, fontSize: 12.5 }}>
-            Valor proyectado con valorización anual estimada del 11%. No constituye garantía de rentabilidad.
+            {VALORIZACION_NOTA}
           </p>
 
           <a className="btn btn-wa" style={{ width: "100%", marginTop: 28 }}

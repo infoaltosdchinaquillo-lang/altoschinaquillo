@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { wa, cop, GALLERY, proyectar, quedanEnRango } from "../data";
+import { wa, cop, GALLERY, PLAN, planPago, proyectar, quedanEnRango, TERRENO, VALORIZACION_NOTA } from "../data";
 import { IconWa, IconCheck, IconClose, IconExpand, Dot, Lightbox, useLockScroll } from "./ui";
 
 const TABS = [
@@ -10,7 +10,7 @@ const TABS = [
 
 export default function LotModal({ lot, onClose, onCompare, inCompare }) {
   const [tab, setTab] = useState("info");
-  const [mo, setMo] = useState(12);
+  const [mo, setMo] = useState(PLAN.meses);
   const [img, setImg] = useState(0);
   const [lightbox, setLightbox] = useState(false);
   const [anios, setAnios] = useState(5);
@@ -26,8 +26,9 @@ export default function LotModal({ lot, onClose, onCompare, inCompare }) {
   if (!lot) return null;
 
   const price = lot.price * 1e6;
-  const ini = price * 0.3;
-  const cuota = (price * 0.7) / mo;
+  const plan = planPago(price, { meses: mo });
+  const ini = plan.inicial;
+  const cuota = plan.cuota;
   const futuro = proyectar(lot.price, anios);
   const ganancia = futuro - price;
   const quedan = quedanEnRango(lot);
@@ -145,8 +146,9 @@ export default function LotModal({ lot, onClose, onCompare, inCompare }) {
                       {[
                         ["Área", `${lot.area.toLocaleString()} m²`],
                         ["Precio por m²", cop(Math.round(price / lot.area))],
-                        ["Inicial (30%)", cop(ini)],
-                        ["Saldo financiado", cop(price * 0.7)],
+                        [`Inicial (${PLAN.inicialPct}%)`, cop(ini)],
+                        ["Saldo financiado", cop(plan.saldo)],
+                        ...(TERRENO[lot.terreno] ? [["Terreno", TERRENO[lot.terreno].titulo]] : []),
                         ["Uso", "Campestre residencial"],
                       ].map(([k, v], i) => (
                         <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
@@ -165,14 +167,14 @@ export default function LotModal({ lot, onClose, onCompare, inCompare }) {
                     <span className="meta">Plazo de financiación</span>
                     <span className="num gold" style={{ fontSize: 26 }}>{mo} meses</span>
                   </div>
-                  <input type="range" min={6} max={15} value={mo} onChange={(e) => setMo(+e.target.value)} />
+                  <input type="range" min={6} max={PLAN.mesesMax} value={mo} onChange={(e) => setMo(+e.target.value)} />
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#6F675B" }}>
-                    <span>6 meses</span><span>15 meses</span>
+                    <span>6 meses</span><span>{PLAN.mesesMax} meses</span>
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginTop: 30 }}>
                     <div className="glass" style={{ padding: "22px 24px", borderRadius: 18 }}>
-                      <div className="meta" style={{ fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 10 }}>Inicial 30%</div>
+                      <div className="meta" style={{ fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 10 }}>Inicial {PLAN.inicialPct}%</div>
                       <div className="num" style={{ fontSize: 22, color: "#F2EBE0" }}>{cop(ini)}</div>
                     </div>
                     <div className="glass-gold" style={{ padding: "22px 24px", borderRadius: 18 }}>
@@ -182,6 +184,7 @@ export default function LotModal({ lot, onClose, onCompare, inCompare }) {
                   </div>
                   <p className="meta" style={{ marginTop: 20 }}>
                     Sin intereses &nbsp;·&nbsp; Financiación directa con el proyecto &nbsp;·&nbsp; {mo} cuotas de {cop(cuota)}
+                    {plan.nExtra > 0 && <> &nbsp;·&nbsp; más {plan.nExtra} extraordinaria{plan.nExtra !== 1 ? "s" : ""} de {cop(plan.valorExtra)} (junio y diciembre)</>}
                   </p>
                 </div>
               )}
@@ -207,8 +210,7 @@ export default function LotModal({ lot, onClose, onCompare, inCompare }) {
                   </div>
 
                   <p className="meta" style={{ marginTop: 18, fontSize: 12.5, lineHeight: 1.7 }}>
-                    Proyección estimada con una valorización anual del 11%, basada en el comportamiento histórico de la zona.
-                    No constituye una garantía de rentabilidad ni una recomendación de inversión.
+                    {VALORIZACION_NOTA}
                   </p>
                 </div>
               )}
