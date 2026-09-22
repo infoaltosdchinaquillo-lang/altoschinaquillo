@@ -68,7 +68,8 @@ export default function Editor() {
             <button className="btn btn-glass" style={{ padding: "11px 20px", fontSize: 12.5 }}
               onClick={() => {
                 const raw = "const RAW = [\n" +
-                  lots.map((l) => `  [${JSON.stringify(l.name).padEnd(20)} ${String(l.areaExacta ?? l.area).padStart(9)}, ${l.sold ? "true " : "false"}],`).join("\n") +
+                  "  // nombre, área m², vendido, precio en millones de pesos\n" +
+                  lots.map((l) => `  [${JSON.stringify(l.name).padEnd(16)}, ${(l.areaExacta ?? l.area).toFixed(2).padStart(8)}, ${l.sold ? "true " : "false"}, ${String(l.price).padStart(3)}],`).join("\n") +
                   "\n];";
                 navigator.clipboard.writeText(raw);
                 setCopiado(true); setTimeout(() => setCopiado(false), 2200);

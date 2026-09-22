@@ -38,6 +38,26 @@ const GLYPHS = "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf";
 const EJE_LOTEO = 77;
 const PITCH_3D = 58;
 
+/* ── Colores por estado ──────────────────────────
+   La idea es que no compitan: el disponible salta a la vista y el
+   vendido se apaga, porque sobre el satélite (que ya es verdoso)
+   dos colores de fuerza parecida se confunden de lejos.
+
+   Para probar la variante dorada, cambia DISPONIBLE por "#E8B55F"
+   y sube BORDE_DISPONIBLE a "#FFF3DE". */
+const C = {
+  DISPONIBLE: "#9FE05A",
+  DISPONIBLE_OP: 0.6,
+  BORDE_DISPONIBLE: "#FFFFFF",
+  VENDIDO: "#4A423A",
+  VENDIDO_OP: 0.5,
+  BORDE_VENDIDO: "#B9AF9F",
+  ACTIVO: "#E5BC8B",
+  ACTIVO_OP: 0.85,
+  BORDE_ACTIVO: "#FFF8EE",
+  VERDE_ZONA: "#5E8A45",
+};
+
 /* Por debajo de zoom 16, con relieve, cámara inclinada y pantalla vertical
    (celular), MapLibre 6.3 deja el mapa en blanco sin ningún error. Medido:
    15,98 → nada; 16,00 → todo. No hace falta alejarse más: el loteo completo
@@ -175,36 +195,46 @@ export default function Terrain3D({
           { id: "predio-fondo", type: "fill", source: "predio",
             paint: { "fill-color": "#D9C2A0", "fill-opacity": 0.14 } },
           { id: "verdes", type: "fill", source: "verdes",
-            paint: { "fill-color": "#5E8A45", "fill-opacity": 0.38 } },
+            paint: { "fill-color": C.VERDE_ZONA, "fill-opacity": 0.3 } },
           { id: "lotes-relleno", type: "fill", source: "lotes",
             paint: {
               "fill-color": [
                 "case",
-                ["boolean", ["feature-state", "activo"], false], "#E5BC8B",
-                ["get", "vendido"], "#8C8479",
-                "#8FBB68",
+                ["boolean", ["feature-state", "activo"], false], C.ACTIVO,
+                ["get", "vendido"], C.VENDIDO,
+                C.DISPONIBLE,
               ],
               "fill-opacity": [
                 "case",
-                ["boolean", ["feature-state", "activo"], false], 0.78,
-                ["get", "vendido"], 0.42,
-                0.5,
+                ["boolean", ["feature-state", "activo"], false], C.ACTIVO_OP,
+                ["get", "vendido"], C.VENDIDO_OP,
+                C.DISPONIBLE_OP,
               ],
             } },
           { id: "lotes-borde", type: "line", source: "lotes",
             paint: {
-              "line-color": ["case", ["boolean", ["feature-state", "activo"], false], "#FFF8EE", "#F2EBE0"],
-              "line-width": ["interpolate", ["linear"], ["zoom"], 15, 0.6, 18, 1.8],
-              "line-opacity": 0.85,
+              "line-color": [
+                "case",
+                ["boolean", ["feature-state", "activo"], false], C.BORDE_ACTIVO,
+                ["get", "vendido"], C.BORDE_VENDIDO,
+                C.BORDE_DISPONIBLE,
+              ],
+              /* el disponible lleva línea más gruesa: el contorno es lo que
+                 se distingue de lejos, más que el relleno */
+              "line-width": ["interpolate", ["linear"], ["zoom"], 15,
+                ["case", ["get", "vendido"], 0.4, 0.9], 18,
+                ["case", ["get", "vendido"], 1.0, 2.4]],
+              "line-opacity": ["case", ["get", "vendido"], 0.45, 0.95],
             } },
           { id: "predio-borde", type: "line", source: "predio",
             paint: { "line-color": "#C99A63", "line-width": ["interpolate", ["linear"], ["zoom"], 15, 1.5, 18, 3.5] } },
           { id: "nombres-punto", type: "circle", source: "nombres",
             paint: {
               "circle-radius": ["interpolate", ["linear"], ["zoom"], 15, 2, 18, 4.5],
-              "circle-color": ["case", ["get", "vendido"], "#B5AB9E", "#FFFFFF"],
+              "circle-color": ["case", ["get", "vendido"], "#9A9083", "#FFFFFF"],
               "circle-stroke-color": "#0B0908",
               "circle-stroke-width": 1,
+              "circle-opacity": ["case", ["get", "vendido"], 0.7, 1],
             } },
           { id: "nombres", type: "symbol", source: "nombres",
             layout: {
@@ -222,7 +252,7 @@ export default function Terrain3D({
               "symbol-sort-key": ["case", ["get", "vendido"], 1, 0],
             },
             paint: {
-              "text-color": ["case", ["get", "vendido"], "#D6CEC3", "#FFFFFF"],
+              "text-color": ["case", ["get", "vendido"], "#B3A99C", "#FFFFFF"],
               "text-halo-color": "rgba(11,9,8,0.92)",
               "text-halo-width": 1.6,
             } },
@@ -396,9 +426,9 @@ export default function Terrain3D({
       <div className="glass-pill" style={{ position: "absolute", bottom: 14, left: 14, zIndex: 5, display: "flex", gap: "6px 14px",
         padding: "9px 15px", alignItems: "center", flexWrap: "wrap", maxWidth: "calc(100% - 132px)", borderRadius: 16 }}>
         {[
-          { c: "#8FBB68", l: "Disponible" },
-          { c: "#8C8479", l: "Vendido" },
-          { c: "#5E8A45", l: "Zona verde" },
+          { c: C.DISPONIBLE, l: "Disponible" },
+          { c: C.VENDIDO, l: "Vendido" },
+          { c: C.VERDE_ZONA, l: "Zona verde" },
         ].map((x) => (
           <div key={x.l} style={{ display: "flex", alignItems: "center", gap: 7 }}>
             <span style={{ width: 10, height: 10, borderRadius: 3, background: x.c, border: "1px solid rgba(255,255,255,0.45)" }} />
