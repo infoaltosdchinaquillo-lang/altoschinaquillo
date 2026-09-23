@@ -9,27 +9,38 @@ const PASOS = [
   { n: `${PLAN.mesesMax}`, t: "Meses de plazo", d: "Tú eliges el plazo. Dos cuotas extraordinarias al año, en junio y diciembre, bajan la mensual." },
 ];
 
-/* Rutas de crédito.
-   ⚠ Es información del mercado, NO convenios: el proyecto todavía no tiene
-   acuerdo firmado con ninguna entidad. Por eso no se nombra ningún banco ni
-   cooperativa como aliado. Cuando exista un convenio real, se nombra aquí. */
+/* Rutas de pago y crédito.
+   Enlaces y teléfonos verificados el 22 sep 2026 — si alguno deja de
+   responder, se quita: es peor mandar al cliente a una página caída.
+
+   ⚠ Todavía NO hay convenio firmado con ninguna entidad, así que
+   ninguna aparece como aliada del proyecto. Es información pública
+   para que el cliente llegue al canal correcto por su cuenta. */
 const CREDITO = [
   {
-    t: "Financiación directa con el proyecto",
-    d: "Es la vía principal y la más simple: sin bancos, sin estudio de crédito y sin intereses. Basta la cédula y la firma de la promesa de compraventa.",
+    t: "Financiación directa con nosotros",
+    d: "La forma más sencilla y la que usa casi todo el mundo aquí: sin banco, sin estudio de crédito y sin intereses. Con tu cédula y la promesa de compraventa, el lote queda apartado el mismo día.",
     destacado: true,
+    cta: { l: "Armar mi plan de pago", wa: "Hola, quiero armar mi plan de pago para un lote en Altos del Chinaquillo" },
   },
   {
-    t: "Crédito para construir, una vez el lote es tuyo",
-    d: "El Fondo Nacional del Ahorro no presta para comprar lote, pero sí financia construcción en sitio propio — es decir, sobre un lote que ya está a tu nombre. Lo mismo aplica para los créditos de construcción de la banca. Terminar de pagar el lote te abre esa puerta.",
+    t: "Crédito para construir tu casa",
+    d: "Cuando el lote queda a tu nombre se te abre el crédito de construcción en sitio propio, tanto del Fondo Nacional del Ahorro como de los bancos. Muchos compradores pagan el lote con nosotros y construyen con crédito.",
+    enlaces: [{ l: "Requisitos en el FNA", href: "https://www.fna.gov.co/personas/vivienda/credito-hipotecario/construccion-en-sitio-propio" }],
+    tels: [{ l: "601 307 7070", n: "6013077070" }, { l: "01 8000 52 7070", n: "018000527070" }, { l: "#289", n: "289" }],
   },
   {
     t: "Cooperativas y fondos de empleados",
-    d: "Suelen ser más flexibles que los bancos con la compra de lote, y varias tienen oficina en Cúcuta. Si trabajas con una, vale la pena preguntar antes que en un banco.",
+    d: "Son las más abiertas a financiar lotes y varias atienden en Cúcuta. Si estás afiliado a alguna, o tu empresa tiene fondo de empleados, suele ser la vía más rápida.",
+    enlaces: [
+      { l: "Financiera Comultrasan", href: "https://www.financieracomultrasan.com.co/es" },
+      { l: "Cooptelecuc", href: "https://cooptelecuc.coop/portal/" },
+    ],
+    nota: "Comultrasan atiende en Cúcuta: Av. 1 # 11-55, barrio La Playa.",
   },
   {
     t: "Crédito de libre inversión",
-    d: "Cualquier banco lo otorga sin exigir garantía sobre el lote, y sirve para cubrir la inicial. Ten en cuenta que la tasa es más alta que la de un crédito de vivienda.",
+    d: "Tu propio banco puede prestarte para cubrir la inicial. Se aprueba rápido, no exige garantía sobre el lote y te deja entrar al proyecto de una vez.",
   },
 ];
 
@@ -278,28 +289,66 @@ export default function Financiacion() {
       <section className="section layer" style={{ paddingTop: 0 }}>
         <div className="wrap">
           <Head
-            eyebrow="¿Y si necesito crédito?"
-            title="No hace falta banco"
-            em="para empezar."
-            lead="La mayoría de bancos en Colombia no presta para comprar un lote. Por eso financiamos nosotros directamente. Estas son las opciones que existen, con o sin nosotros:"
+            eyebrow="Formas de pago y crédito"
+            title="Empezar es"
+            em="más fácil de lo que crees."
+            lead="Lo normal aquí es pagar directo con nosotros, sin banco de por medio. Y si quieres además mirar un crédito, te dejamos a la mano dónde consultarlo y con quién hablar."
           />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginTop: 48 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))", gap: 16, marginTop: 48 }}>
             {CREDITO.map((c, i) => (
-              <div key={i} className={c.destacado ? "glass-gold" : "glass glass-hover"} style={{ padding: "32px 28px" }}>
+              <div key={i} className={c.destacado ? "glass-gold" : "glass glass-hover"}
+                style={{ padding: "32px 28px", display: "flex", flexDirection: "column" }}>
                 <h3 className="h3" style={{ fontSize: 20 }}>{c.t}</h3>
-                <p className="body" style={{ marginTop: 12, fontSize: 14.5 }}>{c.d}</p>
+                <p className="body" style={{ marginTop: 12, fontSize: 14.5, flex: 1 }}>{c.d}</p>
+
+                {c.nota && <p className="meta" style={{ marginTop: 12, fontSize: 12.5 }}>{c.nota}</p>}
+
+                {c.enlaces && (
+                  <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 8 }}>
+                    {c.enlaces.map((e) => (
+                      <a key={e.href} href={e.href} target="_blank" rel="noopener noreferrer"
+                        style={{ fontSize: 13.5, color: "#D9AE7B", display: "inline-flex", alignItems: "center", gap: 7 }}>
+                        {e.l} <IconRight s={12} />
+                      </a>
+                    ))}
+                  </div>
+                )}
+
+                {c.tels && (
+                  <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: "6px 14px" }}>
+                    {c.tels.map((t) => (
+                      <a key={t.n} href={`tel:${t.n}`} className="meta"
+                        style={{ fontSize: 12.5, color: "#A29686" }}>{t.l}</a>
+                    ))}
+                  </div>
+                )}
+
+                {c.cta && (
+                  <a className="btn btn-wa" style={{ marginTop: 20, width: "100%" }}
+                    href={wa(c.cta.wa)} target="_blank" rel="noopener noreferrer">
+                    <IconWa /> {c.cta.l}
+                  </a>
+                )}
               </div>
             ))}
           </div>
-          <p className="meta" style={{ marginTop: 22, fontSize: 12.5, maxWidth: 720 }}>
-            Las condiciones de cada entidad las define la entidad y cambian con el tiempo: confírmalas directamente con ellas.
-            Si quieres, te orientamos sobre cuál ruta se ajusta a tu caso.
-          </p>
-          <a className="btn btn-wa" style={{ marginTop: 26 }}
-            href={wa("Hola, quiero saber qué opciones de pago o crédito me sirven para comprar un lote en Altos del Chinaquillo")}
-            target="_blank" rel="noopener noreferrer">
-            <IconWa /> Preguntar por mi caso
-          </a>
+
+          {/* acompañamiento */}
+          <div className="glass" style={{ marginTop: 26, padding: "30px 32px", display: "flex", flexWrap: "wrap",
+            gap: 22, alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ maxWidth: 560 }}>
+              <h3 className="h3" style={{ fontSize: 20 }}>Te acompañamos en el trámite</h3>
+              <p className="body" style={{ marginTop: 10, fontSize: 14.5 }}>
+                Cuéntanos tu caso y te decimos qué ruta te conviene, qué papeles te van a pedir y a qué oficina ir.
+                Estamos cerrando acuerdos con entidades de la región para que tengas un asesor asignado.
+              </p>
+            </div>
+            <a className="btn btn-primary" style={{ whiteSpace: "nowrap" }}
+              href={wa("Hola, quiero que me orienten sobre las opciones de crédito para comprar un lote en Altos del Chinaquillo")}
+              target="_blank" rel="noopener noreferrer">
+              Hablar con un asesor <IconRight s={14} />
+            </a>
+          </div>
         </div>
       </section>
 
