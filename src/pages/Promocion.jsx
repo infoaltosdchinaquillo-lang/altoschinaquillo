@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { wa, cop, MODELOS, VIVIENDA, planVivienda } from "../data";
+import { wa, cop, MODELOS, PLANOS, VIVIENDA, planVivienda } from "../data";
 import { IconWa, IconCheck, IconExpand, IconRight, Dot, useReveal, Lightbox, Head } from "../components/ui";
+import PlanoViewer from "../components/PlanoViewer";
 
 const ACABADOS = [
   { t: "Estructura", d: "Sistema aporticado en concreto reforzado con cubierta plana en placa maciza." },
@@ -25,6 +26,7 @@ export default function Promocion() {
   const img = imagenes[Math.min(idx, imagenes.length - 1)];
   const precio = m.precio * 1e6;
   const plan = planVivienda(precio, { meses });
+  const planos = PLANOS[m.id];
 
   const elegir = (id) => { setModelo(id); setIdx(0); };
 
@@ -68,7 +70,9 @@ export default function Promocion() {
                   </div>
                   <div className="num gold" style={{ fontSize: 26, marginTop: 10 }}>${x.precio}M</div>
                   <div className="meta" style={{ marginTop: 6, fontSize: 12.5 }}>
-                    {x.area ? `${x.area} m² construidos · casa + lote` : "Casa + lote"}
+                    {x.area
+                      ? `${x.area}${x.areaExtra ? ` + ${x.areaExtra}` : ""} m² · casa + lote`
+                      : "Casa + lote"}
                   </div>
                 </button>
               );
@@ -160,6 +164,28 @@ export default function Promocion() {
           </div>
         </div>
       </section>
+
+      {/* ═══ PLANTA INTERACTIVA ═══ */}
+      {planos && (
+        <section className="section layer" style={{ paddingTop: 0 }}>
+          <div className="wrap">
+            <Head
+              eyebrow="La distribución"
+              title="Recorre la planta"
+              em="sin leer un plano."
+              lead="Toca cualquier punto y te dice qué ambiente es. Acerca con los botones y arrastra para moverte."
+            />
+            <div style={{ marginTop: 44 }}>
+              <PlanoViewer key={m.id} planos={planos} />
+            </div>
+            {m.autor && (
+              <p className="meta" style={{ marginTop: 14, fontSize: 12.5 }}>
+                Planos arquitectónicos: {m.autor}. Sujetos a variaciones durante la construcción.
+              </p>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* ═══ CÓMO SE PAGA ═══ */}
       <section className="section layer" style={{ paddingTop: 0 }}>

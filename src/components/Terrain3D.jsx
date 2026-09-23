@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { MapLibreMap, NavigationControl, Popup, setWorkerUrl } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { LOTES_GEO, PREDIO, RESERVA, ZONAS_VERDES } from "../lotesGeo";
+import { MODELOS } from "../data";
 
 /* ══════════════════════════════════════════════════
    MAPA DEL LOTEO — lotes reales sobre el relieve 3D
@@ -110,6 +111,26 @@ function encuadre(map, modo) {
   return { center, zoom: Math.max(ZOOM_MIN, zoom - (pitch ? 0.3 : 0)), bearing, pitch };
 }
 
+/* ── La casa sobre el lote ──────────────────────
+   Dibuja la huella real de un modelo, a escala, parada sobre el punto
+   interior del lote. El eje largo va paralelo a las curvas de nivel
+   (perpendicular a la subida), que es como se implanta una casa en
+   ladera. La ubicación exacta dentro del lote la define el diseño:
+   esto sirve para ver tamaño, proporción y pendiente, no para replantear. */
+const RUMBO_CASA = (EJE_LOTEO + 90) * Math.PI / 180;
+
+function huellaCasa(centro, huella) {
+  const [lng, lat] = centro;
+  const kx = 111320 * Math.cos((lat * Math.PI) / 180), ky = 110574;
+  const L = huella.largo / 2, A = huella.ancho / 2;
+  const cos = Math.cos(RUMBO_CASA), sin = Math.sin(RUMBO_CASA);
+  const esquinas = [[-L, -A], [L, -A], [L, A], [-L, A], [-L, -A]];
+  return esquinas.map(([x, y]) => {
+    const e = x * cos - y * sin, n = x * sin + y * cos;
+    return [lng + e / kx, lat + n / ky];
+  });
+}
+
 /* Contenido de la ficha flotante: HTML plano, porque vive dentro de MapLibre y no de React */
 function htmlPopup(lot, altura) {
   const area = `${lot.area.toLocaleString("es-CO")} m²`;
@@ -127,6 +148,7 @@ export default function Terrain3D({
   onHover,
   onSelect,
   basemap = "sat",
+  casaModelo = null,
   exageracion = 1.6,
   onAlturas,
   alto = "72vh",
@@ -139,6 +161,7 @@ export default function Terrain3D({
   const cbRef = useRef({});
   const [listo, setListo] = useState(false);
   const [vista, setVista] = useState("3d");
+  const [casa, setCasa] = useState(casaModelo);
 
   /* callbacks y lotes siempre frescos sin recrear el mapa */
   cbRef.current = { onHover, onSelect, onAlturas, lots };
@@ -179,6 +202,7 @@ export default function Terrain3D({
             data: { type: "FeatureCollection", features: [RESERVA, ...ZONAS_VERDES].map((r) => poligono(r)) },
           },
           lotes: { type: "geojson", data: { type: "FeatureCollection", features: [] } },
+          casa: { type: "geojson", data: { type: "FeatureCollection", features: [] } },
           nombres: { type: "geojson", data: { type: "FeatureCollection", features: [] } },
         },
         layers: [
@@ -225,6 +249,12 @@ export default function Terrain3D({
                 ["case", ["get", "vendido"], 0.4, 0.9], 18,
                 ["case", ["get", "vendido"], 1.0, 2.4]],
               "line-opacity": ["case", ["get", "vendido"], 0.45, 0.95],
+            } },
+          { id: "casa", type: "fill-extrusion", source: "casa",
+            paint: {
+              "fill-extrusion-color": "#F2EBE0",
+              "fill-extrusion-height": ["get", "altura"],
+              "fill-extrusion-opacity": 0.92,
             } },
           { id: "predio-borde", type: "line", source: "predio",
             paint: { "line-color": "#C99A63", "line-width": ["interpolate", ["linear"], ["zoom"], 15, 1.5, 18, 3.5] } },
@@ -368,6 +398,21 @@ export default function Terrain3D({
     map.setLayoutProperty("sat", "visibility", basemap === "sat" ? "visible" : "none");
   }, [basemap, listo]);
 
+  /* ── la casa sobre el lote activo ─────────────── */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !listo) return;
+    const lote = selected ?? hovered;
+    const modelo = MODELOS.find((x) => x.id === casa);
+    const geo = lote && LOTES_GEO[lote.id];
+    map.getSource("casa").setData({
+      type: "FeatureCollection",
+      features: modelo && geo
+        ? [poligono(huellaCasa(geo.label, modelo.huella), { altura: modelo.huella.altura })]
+        : [],
+    });
+  }, [casa, hovered, selected, listo]);
+
   /* ── resaltado + ficha flotante ───────────────── */
   useEffect(() => {
     const map = mapRef.current;
@@ -420,6 +465,29 @@ export default function Terrain3D({
           </button>
         ))}
       </div>
+
+      {/* Ver una casa sobre el lote */}
+      <div className="glass-pill" style={{ position: "absolute", top: 14, right: 62, zIndex: 5, padding: "4px 6px" }}>
+        <select value={casa ?? ""} onChange={(e) => setCasa(e.target.value || null)}
+          aria-label="Ver una casa sobre el lote"
+          style={{ background: "transparent", border: "none", outline: "none", color: casa ? "#E5BC8B" : "#A29686",
+            fontFamily: "inherit", fontSize: 12, padding: "6px 8px", cursor: "pointer", maxWidth: 160 }}>
+          <option value="" style={{ background: "#171310" }}>Ver una casa aquí</option>
+          {MODELOS.map((x) => (
+            <option key={x.id} value={x.id} style={{ background: "#171310" }}>{x.nombre}</option>
+          ))}
+        </select>
+      </div>
+
+      {casa && (
+        <div className="glass-pill" style={{ position: "absolute", top: 58, right: 62, zIndex: 5, padding: "8px 14px", maxWidth: 210 }}>
+          <span className="meta" style={{ fontSize: 11.5 }}>
+            {selected || hovered
+              ? "Casa a escala real sobre el lote. La ubicación dentro del lote es referencial."
+              : "Pasa el cursor sobre un lote para ver la casa ahí."}
+          </span>
+        </div>
+      )}
 
       {/* Leyenda */}
       {/* deja sitio al botón de la derecha: en celular se parte en dos líneas */}

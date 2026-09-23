@@ -163,6 +163,8 @@ export const GALLERY = [
 export const MODELOS = [
   {
     id: "pequena",
+    /* huella aproximada: solo se conoce el área construida (115 m²) */
+    huella: { largo: 12.8, ancho: 9, altura: 3.2, aprox: true },
     nombre: "Casa 115",
     precio: 540,                        // millones, casa + lote
     area: 115,
@@ -188,6 +190,8 @@ export const MODELOS = [
   },
   {
     id: "manzano",
+    /* 15,30 m de fachada × 8,92 m de fondo, tomados del plano */
+    huella: { largo: 15.3, ancho: 8.9, altura: 3.2 },
     nombre: "Casa El Manzano",
     precio: 900,
     area: 197,
@@ -211,21 +215,23 @@ export const MODELOS = [
     imagenes: [
       { src: "/Promocion/mediana_dia.jpg", label: "Fachada", caption: "La casa se abre por completo hacia la piscina y el valle" },
       { src: "/Promocion/mediana_noche.jpg", label: "De noche", caption: "Iluminación cálida y vista a la montaña al anochecer" },
-      { src: "/Promocion/manzano_planta.jpg", label: "Planta", caption: "Planta nivel 1 y fachada frontal — diseño Arq. Juliana Vera" },
     ],
   },
   {
     id: "grande",
+    /* 16,00 × 9,20 m del plano: 147 m², que cuadra con los 145,4 m² del primer piso */
+    huella: { largo: 16, ancho: 9.2, altura: 6.2, niveles: 2 },
     nombre: "Casa MR 101",
-    precio: 1200,
+    precio: 1410,
     area: 272,
+    areaExtra: 73,          // piscina y zona social
     autor: "Arq. Juliana Vera",
-    resumen: "Dos niveles que aprovechan la pendiente en lugar de pelear con ella: el piso social se abre entero al valle y arriba van tres habitaciones, cada una con su baño.",
+    resumen: "Dos niveles que aprovechan la pendiente en lugar de pelear con ella: el piso social se abre entero al valle, arriba van tres habitaciones con baño propio, y la piscina queda en su propia terraza de 73 m².",
     specs: [
       { n: "272", u: "m² construidos" },
+      { n: "73", u: "m² de piscina y zona social" },
       { n: "3", u: "Habitaciones" },
       { n: "4", u: "Baños" },
-      { n: "2", u: "Niveles" },
     ],
     incluye: [
       "Lote de 1.000 m² con escritura individual",
@@ -234,13 +240,12 @@ export const MODELOS = [
       "Habitación principal con walk-in closet",
       "Estudio independiente en el segundo nivel",
       "Piso social acristalado hacia el valle",
+      "Piscina y zona social de 73 m² en terraza independiente",
       "Parqueadero con acceso a nivel",
     ],
     imagenes: [
       { src: "/Promocion/grande_dia.jpg", label: "Fachada", caption: "Volumen suspendido sobre la ladera, con piscina en terraza" },
       { src: "/Promocion/grande_tarde.jpg", label: "Conjunto", caption: "La casa aprovecha la pendiente en lugar de pelear con ella" },
-      { src: "/Promocion/mr101_planta1.jpg", label: "Nivel 1", caption: "Nivel 1: hall, cocina, comedor, sala y baño auxiliar — 145,4 m²" },
-      { src: "/Promocion/mr101_planta2.jpg", label: "Nivel 2", caption: "Nivel 2: tres habitaciones con baño propio y estudio — 126,2 m²" },
     ],
   },
 ];
@@ -249,6 +254,204 @@ export const MODELOS = [
 export const PROMO_IMAGES = MODELOS[1].imagenes;
 export const CASA_SPECS = MODELOS[1].specs;
 export const PRECIO_CASA_MIN = Math.min(...MODELOS.map((x) => x.precio));
+
+
+/* ══════════════════════════════════════════════════
+   PLANTAS INTERACTIVAS
+   ══════════════════════════════════════════════════
+   Imagen del plano + la posición de cada ambiente, en % de la imagen.
+   Se extraen de los PDF de la arquitecta con scripts/ambientes.py:
+   el nombre y la coordenada salen del propio plano, no se escriben a
+   mano. Si cambia un plano, se vuelve a correr el script.
+   ══════════════════════════════════════════════════ */
+export const PLANOS = {
+  "manzano": [
+    {
+      img: "manzano_n1.jpg",
+      modelo: "manzano",
+      nivel: "Planta única",
+      w: 1700,
+      h: 1635,
+      ambientes: [
+        {
+          t: "Baño principal",
+          x: 26.5,
+          y: 29.85
+        },
+        {
+          t: "Walk-in closet",
+          x: 20.64,
+          y: 29.86
+        },
+        {
+          t: "Clóset",
+          x: 52.66,
+          y: 35.18
+        },
+        {
+          t: "Baño",
+          x: 36.81,
+          y: 35.63
+        },
+        {
+          t: "Patio",
+          x: 85.45,
+          y: 40.11
+        },
+        {
+          t: "Cocina",
+          x: 77.02,
+          y: 41.21
+        },
+        {
+          t: "Habitación principal",
+          x: 31.16,
+          y: 44.95
+        },
+        {
+          t: "BBQ",
+          x: 17.69,
+          y: 51.21
+        },
+        {
+          t: "Comedor",
+          x: 75.9,
+          y: 53.35
+        },
+        {
+          t: "Baño auxiliar",
+          x: 86.49,
+          y: 55.0
+        },
+        {
+          t: "Asoleadoras",
+          x: 44.82,
+          y: 60.39
+        },
+        {
+          t: "Sala exterior",
+          x: 58.95,
+          y: 65.73
+        },
+        {
+          t: "Sala",
+          x: 74.28,
+          y: 66.27
+        },
+        {
+          t: "Jacuzzi",
+          x: 31.7,
+          y: 66.8
+        },
+        {
+          t: "Sala exterior",
+          x: 22.72,
+          y: 67.25
+        },
+        {
+          t: "Comedor BBQ",
+          x: 15.07,
+          y: 72.25
+        },
+        {
+          t: "Piscina",
+          x: 31.84,
+          y: 73.72
+        }
+      ]
+    }
+  ],
+  "grande": [
+    {
+      img: "mr101_n1.jpg",
+      modelo: "grande",
+      nivel: "Nivel 1",
+      w: 1700,
+      h: 1203,
+      ambientes: [
+        {
+          t: "Hall de entrada",
+          x: 50.51,
+          y: 54.55
+        },
+        {
+          t: "Baño auxiliar",
+          x: 43.7,
+          y: 55.2
+        },
+        {
+          t: "Cocina",
+          x: 37.89,
+          y: 68.51
+        },
+        {
+          t: "Sala",
+          x: 61.74,
+          y: 71.27
+        },
+        {
+          t: "Comedor",
+          x: 50.31,
+          y: 75.5
+        }
+      ]
+    },
+    {
+      img: "mr101_n2.jpg",
+      modelo: "grande",
+      nivel: "Nivel 2",
+      w: 1700,
+      h: 1203,
+      ambientes: [
+        {
+          t: "Baño principal",
+          x: 22.54,
+          y: 54.3
+        },
+        {
+          t: "Escaleras",
+          x: 64.09,
+          y: 55.21
+        },
+        {
+          t: "Estudio",
+          x: 33.6,
+          y: 56.45
+        },
+        {
+          t: "Walk-in closet",
+          x: 27.14,
+          y: 64.18
+        },
+        {
+          t: "Baño 2",
+          x: 68.3,
+          y: 71.74
+        },
+        {
+          t: "Habitación 1",
+          x: 47.94,
+          y: 71.75
+        },
+        {
+          t: "Habitación principal",
+          x: 37.3,
+          y: 72.21
+        },
+        {
+          t: "Baño 1",
+          x: 44.36,
+          y: 72.98
+        },
+        {
+          t: "Habitación 2",
+          x: 61.43,
+          y: 73.9
+        }
+      ]
+    }
+  ]
+};
 
 /* ── Plan de pago de una vivienda ──
    Distinto al del lote: aquí SÍ entra el banco. Por ley el crédito
