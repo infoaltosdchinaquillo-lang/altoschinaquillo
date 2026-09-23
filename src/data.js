@@ -267,7 +267,7 @@ export const PRECIO_CASA_MIN = Math.min(...MODELOS.map((x) => x.precio));
 export const PLANOS = {
   "manzano": [
     {
-      img: "manzano_n1.jpg",
+      img: "/Promocion/manzano_n1.jpg",
       modelo: "manzano",
       nivel: "Planta única",
       w: 1700,
@@ -363,7 +363,7 @@ export const PLANOS = {
   ],
   "grande": [
     {
-      img: "mr101_n1.jpg",
+      img: "/Promocion/mr101_n1.jpg",
       modelo: "grande",
       nivel: "Nivel 1",
       w: 1700,
@@ -397,7 +397,7 @@ export const PLANOS = {
       ]
     },
     {
-      img: "mr101_n2.jpg",
+      img: "/Promocion/mr101_n2.jpg",
       modelo: "grande",
       nivel: "Nivel 2",
       w: 1700,
