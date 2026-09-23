@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { wa, cop, AVAIL, SOLD, PRECIO_MIN, PROMO_IMAGES, CASA_SPECS, GALLERY } from "../data";
+import { wa, cop, AVAIL, SOLD, PRECIO_MIN, PRECIO_CASA_MIN, PROMO_IMAGES, CASA_SPECS, GALLERY } from "../data";
 import { IconWa, IconDown, IconRight, IconExpand, Dot, useReveal, useCount, Lightbox } from "../components/ui";
 
 export default function Home() {
@@ -105,12 +105,12 @@ export default function Home() {
             <div>
               <div className="glass-gold" style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "9px 20px", borderRadius: 999, marginBottom: 26 }}>
                 <Dot color="#D9AE7B" />
-                <span className="eyebrow" style={{ fontSize: 10.5 }}>Promoción especial</span>
+                <span className="eyebrow" style={{ fontSize: 10.5 }}>Tres modelos · desde ${PRECIO_CASA_MIN}M</span>
               </div>
 
               <h2 className="h2">Casa + Lote<br /><span className="serif-em">lista para vivir</span></h2>
               <p className="lead" style={{ marginTop: 26, maxWidth: 440 }}>
-                115 m² cubiertos con terraza panorámica de 20 m². Diseño contemporáneo, acabados de primera y vista abierta a la montaña.
+                Tres modelos de casa sobre tu propio lote, entregados terminados. Diseño contemporáneo, acabados de primera y vista abierta a la montaña.
               </p>
 
               <div className="hair-gold" style={{ margin: "42px 0 36px" }} />
@@ -125,9 +125,9 @@ export default function Home() {
               </div>
 
               <div style={{ display: "flex", gap: 12, marginTop: 46, flexWrap: "wrap" }}>
-                <Link className="btn btn-primary" to="/promocion">Ver la casa <IconRight s={15} /></Link>
+                <Link className="btn btn-primary" to="/promocion">Ver los tres modelos <IconRight s={15} /></Link>
                 <a className="btn btn-glass" href={wa("Hola, me interesa la promoción Casa + Lote de Altos del Chinaquillo.")} target="_blank" rel="noopener noreferrer">
-                  <IconWa /> Consultar precio
+                  <IconWa /> Consultar
                 </a>
               </div>
             </div>

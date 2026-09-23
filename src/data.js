@@ -147,20 +147,123 @@ export const GALLERY = [
   { src: "/images/Altos_proyecto_2.jpg", alt: "Casas en construcción" },
 ];
 
-export const PROMO_IMAGES = [
-  { src: "/Promocion/Casa_fachada.jpeg", label: "Fachada",      caption: "Fachada nocturna — 115 m² cubiertos con terraza de 20 m²" },
-  { src: "/Promocion/Planta_1.jpeg",     label: "Planta 3D",    caption: "Vista cenital: 2 habitaciones, baño, sala, comedor y cocina integral" },
-  { src: "/Promocion/Plano_1.jpeg",      label: "Distribución", caption: "Plano de distribución con medidas" },
+/* ══════════════════════════════════════════════════
+   MODELOS DE CASA + LOTE
+   ══════════════════════════════════════════════════
+   Los tres precios los fijó el propietario (23 sep 2026) e incluyen
+   la casa construida MÁS el lote, y son fijos: valen igual sobre
+   cualquier lote disponible.
+
+   ⚠ NOMBRES: "Casa El Manzano" es el nombre real del plano (Arq.
+   Juliana Vera, marzo 2023). Los otros dos están pendientes de que el
+   propietario los bautice.
+   Las fichas salen de los planos de la Arq. Juliana Vera:
+   "Casa El Manzano" (marzo 2023) y "Vivienda unifamiliar MR 101" (agosto 2022).
+   ══════════════════════════════════════════════════ */
+export const MODELOS = [
+  {
+    id: "pequena",
+    nombre: "Casa 115",
+    precio: 540,                        // millones, casa + lote
+    area: 115,
+    resumen: "La opción para entrar al proyecto con casa terminada: compacta, bien resuelta y con terraza de 20 m² mirando al valle.",
+    specs: [
+      { n: "115", u: "m² construidos" },
+      { n: "2", u: "Habitaciones" },
+      { n: "1", u: "Baño completo" },
+      { n: "20", u: "m² de terraza" },
+    ],
+    incluye: [
+      "Lote de 1.000 m² con escritura individual",
+      "Casa de 115 m² construida y entregada",
+      "Terraza exterior de 20 m² con vista panorámica",
+      "Sala, comedor y cocina integral",
+      "Servicios conectados: agua, luz y alcantarillado",
+    ],
+    imagenes: [
+      { src: "/Promocion/Casa_fachada.jpeg", label: "Fachada", caption: "Fachada nocturna — 115 m² cubiertos con terraza de 20 m²" },
+      { src: "/Promocion/Planta_1.jpeg", label: "Planta 3D", caption: "Vista cenital: 2 habitaciones, baño, sala, comedor y cocina integral" },
+      { src: "/Promocion/Plano_1.jpeg", label: "Distribución", caption: "Plano de distribución con medidas" },
+    ],
+  },
+  {
+    id: "manzano",
+    nombre: "Casa El Manzano",
+    precio: 900,
+    area: 197,
+    autor: "Arq. Juliana Vera",
+    resumen: "Una sola planta de 197 m² que se abre entera al paisaje: tres habitaciones, estudio, chimenea y piscina con jacuzzi sobre el borde de la ladera.",
+    specs: [
+      { n: "197", u: "m² construidos" },
+      { n: "3", u: "Habitaciones" },
+      { n: "3", u: "Baños" },
+      { n: "18", u: "m² de piscina" },
+    ],
+    incluye: [
+      "Lote de 1.000 m² con escritura individual",
+      "Casa de 197 m² en una sola planta",
+      "Habitación principal con walk-in closet y baño propio",
+      "Estudio independiente y sala con chimenea",
+      "Piscina de 18 m² con jacuzzi y borde sin fin",
+      "BBQ con comedor y sala exterior",
+      "Deck posterior de 5,5 m²",
+    ],
+    imagenes: [
+      { src: "/Promocion/mediana_dia.jpg", label: "Fachada", caption: "La casa se abre por completo hacia la piscina y el valle" },
+      { src: "/Promocion/mediana_noche.jpg", label: "De noche", caption: "Iluminación cálida y vista a la montaña al anochecer" },
+      { src: "/Promocion/manzano_planta.jpg", label: "Planta", caption: "Planta nivel 1 y fachada frontal — diseño Arq. Juliana Vera" },
+    ],
+  },
+  {
+    id: "grande",
+    nombre: "Casa MR 101",
+    precio: 1200,
+    area: 272,
+    autor: "Arq. Juliana Vera",
+    resumen: "Dos niveles que aprovechan la pendiente en lugar de pelear con ella: el piso social se abre entero al valle y arriba van tres habitaciones, cada una con su baño.",
+    specs: [
+      { n: "272", u: "m² construidos" },
+      { n: "3", u: "Habitaciones" },
+      { n: "4", u: "Baños" },
+      { n: "2", u: "Niveles" },
+    ],
+    incluye: [
+      "Lote de 1.000 m² con escritura individual",
+      "Casa de 271,6 m² en dos niveles (145,4 m² + 126,2 m²)",
+      "Tres habitaciones, cada una con baño propio",
+      "Habitación principal con walk-in closet",
+      "Estudio independiente en el segundo nivel",
+      "Piso social acristalado hacia el valle",
+      "Parqueadero con acceso a nivel",
+    ],
+    imagenes: [
+      { src: "/Promocion/grande_dia.jpg", label: "Fachada", caption: "Volumen suspendido sobre la ladera, con piscina en terraza" },
+      { src: "/Promocion/grande_tarde.jpg", label: "Conjunto", caption: "La casa aprovecha la pendiente en lugar de pelear con ella" },
+      { src: "/Promocion/mr101_planta1.jpg", label: "Nivel 1", caption: "Nivel 1: hall, cocina, comedor, sala y baño auxiliar — 145,4 m²" },
+      { src: "/Promocion/mr101_planta2.jpg", label: "Nivel 2", caption: "Nivel 2: tres habitaciones con baño propio y estudio — 126,2 m²" },
+    ],
+  },
 ];
 
-export const CASA_SPECS = [
-  { n: "2",      u: "Habitaciones" },
-  { n: "1",      u: "Baño completo" },
-  { n: "115",    u: "m² cubiertos" },
-  { n: "20",     u: "m² de terraza" },
-  { n: "Sala",   u: "y comedor" },
-  { n: "Cocina", u: "integral" },
-];
+/* La portada muestra el modelo intermedio, que es el más vistoso */
+export const PROMO_IMAGES = MODELOS[1].imagenes;
+export const CASA_SPECS = MODELOS[1].specs;
+export const PRECIO_CASA_MIN = Math.min(...MODELOS.map((x) => x.precio));
+
+/* ── Plan de pago de una vivienda ──
+   Distinto al del lote: aquí SÍ entra el banco. Por ley el crédito
+   hipotecario financia hasta el 70 % de una vivienda (el leasing
+   habitacional llega al 80 %), así que la inicial es del 30 % y se
+   difiere mientras se construye, como en cualquier proyecto de
+   vivienda del país. El crédito queda sujeto al estudio del banco. */
+export const VIVIENDA = { inicialPct: 30, meses: 24, mesesMax: 36 };
+
+export function planVivienda(precio, opc = {}) {
+  const { inicialPct = VIVIENDA.inicialPct, meses = VIVIENDA.meses } = opc;
+  const inicial = precio * (inicialPct / 100);
+  const banco = precio - inicial;
+  return { inicial, banco, meses, cuota: inicial / meses };
+}
 
 /* ══════════════════════════════════════════════════
    ÁREAS COMUNES (no vendibles) — para mostrar como valor agregado
