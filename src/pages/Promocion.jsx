@@ -1,8 +1,12 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Link } from "react-router-dom";
 import { wa, cop, MODELOS, PLANOS, VIVIENDA, planVivienda } from "../data";
 import { IconWa, IconCheck, IconExpand, IconRight, Dot, useReveal, Lightbox, Head } from "../components/ui";
 import PlanoViewer from "../components/PlanoViewer";
+
+/* three.js pesa ~170 KB gzip: se descarga solo al abrir esta página */
+const Casa3D = lazy(() => import("../components/Casa3D"));
+import { CASAS_3D } from "../casas3d";
 
 const ACABADOS = [
   { t: "Estructura", d: "Sistema aporticado en concreto reforzado con cubierta plana en placa maciza." },
@@ -18,6 +22,7 @@ export default function Promocion() {
   const [idx, setIdx] = useState(0);
   const [lightbox, setLightbox] = useState(false);
   const [meses, setMeses] = useState(VIVIENDA.meses);
+  const [vistaPlano, setVistaPlano] = useState("3d");
 
   const r1 = useReveal(), r2 = useReveal(), r3 = useReveal(), r4 = useReveal();
 
@@ -27,6 +32,7 @@ export default function Promocion() {
   const precio = m.precio * 1e6;
   const plan = planVivienda(precio, { meses });
   const planos = PLANOS[m.id];
+  const tiene3d = !!CASAS_3D[m.id];
 
   const elegir = (id) => { setModelo(id); setIdx(0); };
 
@@ -165,22 +171,46 @@ export default function Promocion() {
         </div>
       </section>
 
-      {/* ═══ PLANTA INTERACTIVA ═══ */}
-      {planos && (
+      {/* ═══ MAQUETA 3D + PLANTA ═══ */}
+      {(tiene3d || planos) && (
         <section className="section layer" style={{ paddingTop: 0 }}>
           <div className="wrap">
             <Head
               eyebrow="La distribución"
-              title="Recorre la planta"
-              em="sin leer un plano."
-              lead="Toca cualquier punto y te dice qué ambiente es. Acerca con los botones y arrastra para moverte."
+              title="Dale la vuelta"
+              em="a la casa."
+              lead="La maqueta está levantada de los planos a medidas reales: si el plano dice 16 metros, aquí mide 16 metros. Gírala, acércate y mira cómo se reparten los espacios."
             />
-            <div style={{ marginTop: 44 }}>
-              <PlanoViewer key={m.id} planos={planos} />
+
+            {tiene3d && planos && (
+              <div className="glass-pill" style={{ display: "inline-flex", gap: 3, padding: 4, marginTop: 34 }}>
+                {[{ k: "3d", l: "Maqueta 3D" }, { k: "plano", l: "Plano" }].map((b) => (
+                  <button key={b.k} onClick={() => setVistaPlano(b.k)}
+                    style={{ padding: "9px 18px", fontSize: 12.5, cursor: "pointer", border: "none", borderRadius: 999,
+                      background: vistaPlano === b.k ? "linear-gradient(150deg,#E5BC8B,#C99A63)" : "transparent",
+                      color: vistaPlano === b.k ? "#17110B" : "#8B8173" }}>
+                    {b.l}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div style={{ marginTop: 20 }}>
+              {vistaPlano === "3d" && tiene3d ? (
+                <Suspense fallback={
+                  <div className="glass" style={{ height: "clamp(340px, 58vh, 620px)", display: "grid", placeItems: "center" }}>
+                    <span className="meta">Levantando la maqueta…</span>
+                  </div>
+                }>
+                  <Casa3D key={m.id} modelo={m.id} />
+                </Suspense>
+              ) : planos && <PlanoViewer key={m.id} planos={planos} />}
             </div>
+
             {m.autor && (
               <p className="meta" style={{ marginTop: 14, fontSize: 12.5 }}>
-                Planos arquitectónicos: {m.autor}. Sujetos a variaciones durante la construcción.
+                Levantada de los planos de {m.autor}. Maqueta de estudio: muestra distribución y tamaño,
+                no acabados. Sujeta a variaciones durante la construcción.
               </p>
             )}
           </div>
