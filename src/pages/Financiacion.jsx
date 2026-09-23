@@ -9,6 +9,30 @@ const PASOS = [
   { n: `${PLAN.mesesMax}`, t: "Meses de plazo", d: "Tú eliges el plazo. Dos cuotas extraordinarias al año, en junio y diciembre, bajan la mensual." },
 ];
 
+/* Rutas de crédito.
+   ⚠ Es información del mercado, NO convenios: el proyecto todavía no tiene
+   acuerdo firmado con ninguna entidad. Por eso no se nombra ningún banco ni
+   cooperativa como aliado. Cuando exista un convenio real, se nombra aquí. */
+const CREDITO = [
+  {
+    t: "Financiación directa con el proyecto",
+    d: "Es la vía principal y la más simple: sin bancos, sin estudio de crédito y sin intereses. Basta la cédula y la firma de la promesa de compraventa.",
+    destacado: true,
+  },
+  {
+    t: "Crédito para construir, una vez el lote es tuyo",
+    d: "El Fondo Nacional del Ahorro no presta para comprar lote, pero sí financia construcción en sitio propio — es decir, sobre un lote que ya está a tu nombre. Lo mismo aplica para los créditos de construcción de la banca. Terminar de pagar el lote te abre esa puerta.",
+  },
+  {
+    t: "Cooperativas y fondos de empleados",
+    d: "Suelen ser más flexibles que los bancos con la compra de lote, y varias tienen oficina en Cúcuta. Si trabajas con una, vale la pena preguntar antes que en un banco.",
+  },
+  {
+    t: "Crédito de libre inversión",
+    d: "Cualquier banco lo otorga sin exigir garantía sobre el lote, y sirve para cubrir la inicial. Ten en cuenta que la tasa es más alta que la de un crédito de vivienda.",
+  },
+];
+
 const FAQ = [
   { q: "¿Necesito aprobación bancaria?", a: "No. La financiación es directa con el proyecto, sin intermediarios ni estudio de crédito bancario. Solo requerimos documento de identidad y firma de la promesa de compraventa." },
   { q: "¿Cobran intereses?", a: `No. El valor del lote no cambia por financiarlo. Pagas exactamente el mismo precio en 6 meses que en ${PLAN.mesesMax}.` },
@@ -247,6 +271,35 @@ export default function Financiacion() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ═══ CRÉDITO ═══ */}
+      <section className="section layer" style={{ paddingTop: 0 }}>
+        <div className="wrap">
+          <Head
+            eyebrow="¿Y si necesito crédito?"
+            title="No hace falta banco"
+            em="para empezar."
+            lead="La mayoría de bancos en Colombia no presta para comprar un lote. Por eso financiamos nosotros directamente. Estas son las opciones que existen, con o sin nosotros:"
+          />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginTop: 48 }}>
+            {CREDITO.map((c, i) => (
+              <div key={i} className={c.destacado ? "glass-gold" : "glass glass-hover"} style={{ padding: "32px 28px" }}>
+                <h3 className="h3" style={{ fontSize: 20 }}>{c.t}</h3>
+                <p className="body" style={{ marginTop: 12, fontSize: 14.5 }}>{c.d}</p>
+              </div>
+            ))}
+          </div>
+          <p className="meta" style={{ marginTop: 22, fontSize: 12.5, maxWidth: 720 }}>
+            Las condiciones de cada entidad las define la entidad y cambian con el tiempo: confírmalas directamente con ellas.
+            Si quieres, te orientamos sobre cuál ruta se ajusta a tu caso.
+          </p>
+          <a className="btn btn-wa" style={{ marginTop: 26 }}
+            href={wa("Hola, quiero saber qué opciones de pago o crédito me sirven para comprar un lote en Altos del Chinaquillo")}
+            target="_blank" rel="noopener noreferrer">
+            <IconWa /> Preguntar por mi caso
+          </a>
         </div>
       </section>
 

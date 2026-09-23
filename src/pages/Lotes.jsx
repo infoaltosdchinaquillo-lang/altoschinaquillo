@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, useMemo } from "react";
-import { LOTS, TOTAL, SOLD, AVAIL, AREA_MIN, AREA_MAX, cop, wa, planPago, proyectar, VALORIZACION_NOTA } from "../data";
+import { LOTS, TOTAL, SOLD, AVAIL, AREA_MIN, AREA_MAX, TERRENO, cop, wa, planPago, proyectar, VALORIZACION_NOTA } from "../data";
 import { IconWa, IconClose, useReveal } from "../components/ui";
 import LotModal from "../components/LotModal";
 
@@ -16,6 +16,7 @@ const ORDENES = [
 
 export default function Lotes() {
   const [filter, setFilter] = useState("available");
+  const [terreno, setTerreno] = useState("todos");
   const [orden, setOrden] = useState("precio-asc");
   const [hovered, setHovered] = useState(null);
   const [modal, setModal] = useState(null);
@@ -25,7 +26,8 @@ export default function Lotes() {
   const r1 = useReveal();
 
   const visibles = useMemo(() => {
-    const base = filter === "all" ? LOTS : filter === "available" ? LOTS.filter((x) => !x.sold) : LOTS.filter((x) => x.sold);
+    let base = filter === "all" ? LOTS : filter === "available" ? LOTS.filter((x) => !x.sold) : LOTS.filter((x) => x.sold);
+    if (terreno !== "todos") base = base.filter((x) => x.terreno === terreno);
     const s = [...base];
     if (orden === "precio-asc") s.sort((a, b) => a.price - b.price);
     if (orden === "precio-desc") s.sort((a, b) => b.price - a.price);
@@ -33,7 +35,7 @@ export default function Lotes() {
     if (orden === "area-asc") s.sort((a, b) => a.area - b.area);
     if (orden === "nombre") s.sort((a, b) => a.name.localeCompare(b.name, "es"));
     return s;
-  }, [filter, orden]);
+  }, [filter, orden, terreno]);
 
   const toggleCompare = (lot) => {
     setCompare((c) => {
@@ -99,6 +101,17 @@ export default function Lotes() {
                   Comparar {compare.length}
                 </button>
               )}
+              <select value={terreno} onChange={(e) => setTerreno(e.target.value)} className="glass-pill"
+                aria-label="Filtrar por tipo de terreno"
+                style={{ padding: "12px 18px", fontSize: 13, color: "#E8DFD3", cursor: "pointer", border: "none", outline: "none",
+                  fontFamily: "inherit", appearance: "none", paddingRight: 40,
+                  backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23857B6D' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")",
+                  backgroundRepeat: "no-repeat", backgroundPosition: "right 15px center" }}>
+                <option value="todos" style={{ background: "#171310" }}>Todo terreno</option>
+                {Object.entries(TERRENO).map(([k, v]) => (
+                  <option key={k} value={k} style={{ background: "#171310" }}>{v.titulo}</option>
+                ))}
+              </select>
               <select value={orden} onChange={(e) => setOrden(e.target.value)} className="glass-pill"
                 style={{ padding: "12px 18px", fontSize: 13, color: "#E8DFD3", cursor: "pointer", border: "none", outline: "none",
                   fontFamily: "inherit", appearance: "none", paddingRight: 40,
@@ -320,6 +333,12 @@ function LotRow({ lot, active, inCompare, onEnter, onLeave, onClick, onCompare }
           {lot.area.toLocaleString("es-CO")} m²
           <span className="lt-sep">·</span>
           {(lot.price * 1e6 / lot.area / 1000).toFixed(0)} mil/m²
+          {TERRENO[lot.terreno] && (
+            <>
+              <span className="lt-sep">·</span>
+              <span style={{ color: "#A8C48A" }}>{TERRENO[lot.terreno].titulo}</span>
+            </>
+          )}
         </span>
       </div>
 

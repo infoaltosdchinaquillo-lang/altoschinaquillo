@@ -157,6 +157,13 @@ export default function LotModal({ lot, onClose, onCompare, inCompare }) {
                         </div>
                       ))}
                     </div>
+
+                    {TERRENO[lot.terreno] && (
+                      <p className="meta" style={{ marginTop: 16, fontSize: 12.5, lineHeight: 1.65 }}>
+                        <span style={{ color: "#D9AE7B" }}>{TERRENO[lot.terreno].titulo}.</span>{" "}
+                        {TERRENO[lot.terreno].nota}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
