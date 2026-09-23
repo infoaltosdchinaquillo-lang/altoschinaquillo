@@ -47,6 +47,31 @@ function texturaRuido({ base, grano = 12, escala = 4, lineas = 0 }) {
   return t;
 }
 
+/* El piso de cada nivel es el plano recortado (ver scripts/muros3d.py).
+   Es lo que hace legible la maqueta: se ven las camas, el sofá, la cocina
+   y los aparatos, tal como los dibujó la arquitecta, con los muros
+   levantados encima. */
+function pisoConPlano(t, cargador) {
+  const tex = cargador.load(t.img);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 16;
+  /* sin mipmaps: con ellos el navegador promedia las líneas del plano hasta
+     dejarlas en blanco cuando la maqueta se ve de lejos */
+  tex.generateMipmaps = false;
+  tex.minFilter = THREE.LinearFilter;
+
+  /* rectángulo del tamaño exacto del recorte: las UV que trae de fábrica
+     ya calzan la textura, sin cálculos propios */
+  const g = new THREE.PlaneGeometry(t.ancho, t.fondo);
+  g.rotateX(-Math.PI / 2);
+  g.translate(t.cx, 0, -t.cy);
+
+  const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.98, metalness: 0, envMapIntensity: 0.15 });
+  const malla = new THREE.Mesh(g, mat);
+  malla.receiveShadow = true;
+  return { malla, mat, tex };
+}
+
 /* ── Ambientación: la misma casa a dos horas del día ── */
 const AMBIENTACION = {
   dia: {
@@ -65,6 +90,7 @@ const AMBIENTACION = {
 
 const GROSOR_MURO = 0.14;
 const ALTO_NIVEL = 2.9;      // separación entre pisos
+const ALTO_MURO = 2.2;       // algo por debajo del real: desde arriba tapa menos
 const COLOR_MURO = 0xEDE4D6;
 const COLOR_PISO = 0x8E8577;
 
@@ -157,6 +183,8 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
 
     const matMuro = new THREE.MeshStandardMaterial({ color: COLOR_MURO, map: texMuro, roughness: 0.82, metalness: 0 });
     const matPiso = new THREE.MeshStandardMaterial({ color: COLOR_PISO, map: texPiso, roughness: 0.9, metalness: 0 });
+    const cargador = new THREE.TextureLoader();
+    const pisos = [];
     const matPasto = new THREE.MeshStandardMaterial({ map: texPasto, roughness: 1, metalness: 0 });
     /* el agua se lee por el reflejo, no por el color: poca rugosidad */
     const matAgua = new THREE.MeshStandardMaterial({
@@ -168,17 +196,24 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
     const grupos = niveles.map((n, i) => {
       const g = new THREE.Group();
       g.position.y = i * ALTO_NIVEL;
-      const piso = new THREE.Mesh(geometriaPiso(n.piso), matPiso);
-      piso.position.y = 0;        // la losa baja desde 0; los muros apoyan encima
-      piso.receiveShadow = true;
-      g.add(piso);
+      const losa = new THREE.Mesh(geometriaPiso(n.piso), matPiso);
+      losa.position.y = 0;        // la losa baja desde 0; los muros apoyan encima
+      losa.receiveShadow = true;
+      g.add(losa);
+
+      if (n.textura) {
+        const pl = pisoConPlano(n.textura, cargador);
+        pl.malla.position.y = 0.012;   // apenas sobre la losa, para que se vea
+        g.add(pl.malla);
+        pisos.push(pl);
+      }
       for (const a of n.agua ?? []) {
         const agua = new THREE.Mesh(geometriaAgua(a.poly), matAgua);
         agua.position.y = 0.02;      // a ras de piso: si queda debajo, la losa la tapa
         agua.receiveShadow = true;
         g.add(agua);
       }
-      const muros = geometriaMuros(n.muros, n.alturaMuro);
+      const muros = geometriaMuros(n.muros, ALTO_MURO);
       if (muros) {
         const malla = new THREE.Mesh(muros, matMuro);
         malla.castShadow = true;
@@ -293,6 +328,7 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
     };
 
     escenaRef.current = { grupos, ctrl, aplicarHora };
+    if (import.meta.env.DEV) window.__casa3d = { escena, grupos, pisos, camara };
     setListo(true);
 
     return () => {
@@ -304,6 +340,7 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
       render.dispose();
       escena.traverse((o) => { o.geometry?.dispose?.(); });
       matMuro.dispose(); matPiso.dispose(); matPasto.dispose(); matAgua.dispose();
+      for (const pl of pisos) { pl.mat.dispose(); pl.tex.dispose(); }
       texMuro.dispose(); texPiso.dispose(); texPasto.dispose();
       pmrem.dispose();
       cont.removeChild(render.domElement);
