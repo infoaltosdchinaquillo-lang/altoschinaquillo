@@ -12,9 +12,11 @@ import { CASAS_3D } from "../casas3d";
    (ver scripts/muros3d.py), extruidos a escala real. No es un dibujo
    aproximado: si el plano dice 16,00 m, la maqueta mide 16,00 m.
 
-   Es una maqueta de estudio, no un render: sirve para entender la
-   distribución y el tamaño. Los renders siguen siendo los del
-   arquitecto.
+   En las casas leídas por capas (El Manzano) los muros van a su altura
+   real, las ventanas y persianas tienen las alturas de las fachadas y
+   los cortes, y la placa de cubierta se puede quitar. Los materiales son
+   los que nombran las fachadas, simplificados: no es un render, y los
+   renders siguen siendo los de la arquitecta.
    ══════════════════════════════════════════════════ */
 
 /* ── Texturas ──
@@ -113,6 +115,72 @@ function geometriaMuros(muros, altura) {
   return partes.length ? mergeGeometries(partes) : null;
 }
 
+/* ── Casas leídas por capas (ver scripts/muros3d.py) ──
+   `solidos`: planta de muros y columnas con sus huecos interiores.
+   `vanos`:   ventanas y persianas, con las alturas de fachadas y cortes.
+   `placa`:   cubierta plana (placa de concreto), sin el patio descubierto. */
+
+function forma(anillos) {
+  const aVec = (anillo) => anillo.map(([x, y]) => { const [tx, tz] = aTres(x, y); return new THREE.Vector2(tx, tz); });
+  const s = new THREE.Shape(aVec(anillos[0]));
+  for (const h of anillos.slice(1)) s.holes.push(new THREE.Path(aVec(h)));
+  return s;
+}
+
+/* extruye hacia arriba desde `base` una altura `alto` */
+function extruir(polys, base, alto) {
+  if (!polys?.length) return null;
+  const g = new THREE.ExtrudeGeometry(polys.map(forma), { depth: alto, bevelEnabled: false });
+  g.rotateX(Math.PI / 2);          // la forma se dibuja en XZ y baja; se sube
+  g.translate(0, base + alto, 0);
+  return g;
+}
+
+/* caja a lo largo del vano, entre dos alturas */
+function tramo(v, z0, z1, grosor, desplazar = 0) {
+  const [ax, az] = aTres(...v.a);
+  const [bx, bz] = aTres(...v.b);
+  const largo = Math.hypot(bx - ax, bz - az);
+  const g = new THREE.BoxGeometry(largo, z1 - z0, grosor);
+  g.translate(desplazar, (z0 + z1) / 2, 0);
+  g.rotateY(-Math.atan2(bz - az, bx - ax));
+  g.translate((ax + bx) / 2, 0, (az + bz) / 2);
+  return g;
+}
+
+const MARCO = 0.05;
+function geometriaVanos(vanos, alto) {
+  const muro = [], vidrio = [], marco = [], madera = [];
+  for (const v of vanos) {
+    const gr = Math.max(v.grosor, 0.1);
+    const largo = Math.hypot(v.b[0] - v.a[0], v.b[1] - v.a[1]);
+    if (v.tipo === "macizo") { muro.push(tramo(v, 0, alto, gr)); continue; }
+    if (v.z0 > 0.01) muro.push(tramo(v, 0, v.z0, gr));
+    if (v.z1 < alto - 0.01) muro.push(tramo(v, v.z1, alto, gr));
+    const h = v.z1 - v.z0;
+    // marco perimetral, negro como la ventanería de los planos
+    marco.push(tramo(v, v.z0, v.z0 + MARCO, gr * 0.5), tramo(v, v.z1 - MARCO, v.z1, gr * 0.5));
+    for (const lado of [-1, 1]) {
+      const g = new THREE.BoxGeometry(MARCO, h, gr * 0.5);
+      const [ax, az] = aTres(...v.a), [bx, bz] = aTres(...v.b);
+      g.translate(lado * (largo - MARCO) / 2, v.z0 + h / 2, 0);
+      g.rotateY(-Math.atan2(bz - az, bx - ax));
+      g.translate((ax + bx) / 2, 0, (az + bz) / 2);
+      marco.push(g);
+    }
+    if (v.tipo === "ventana") {
+      vidrio.push(tramo(v, v.z0 + MARCO, v.z1 - MARCO, 0.02));
+    } else if (v.tipo === "persiana") {
+      // listones horizontales, como los dibuja la fachada
+      for (let z = v.z0 + MARCO + 0.03; z < v.z1 - MARCO - 0.02; z += 0.09) {
+        madera.push(tramo(v, z, z + 0.045, gr * 0.35));
+      }
+    }
+  }
+  const unir = (l) => (l.length ? mergeGeometries(l) : null);
+  return { muro: unir(muro), vidrio: unir(vidrio), marco: unir(marco), madera: unir(madera) };
+}
+
 function geometriaPiso(piso) {
   const forma = new THREE.Shape();
   piso.forEach(([x, y], i) => {
@@ -143,6 +211,7 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
   const capaRef = useRef(null);
   const escenaRef = useRef(null);
   const [nivel, setNivel] = useState("todo");
+  const [techo, setTecho] = useState(true);
   const [listo, setListo] = useState(false);
 
   const niveles = CASAS_3D[modelo] ?? [];
@@ -186,6 +255,19 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
     const cargador = new THREE.TextureLoader();
     const pisos = [];
     const matPasto = new THREE.MeshStandardMaterial({ map: texPasto, roughness: 1, metalness: 0 });
+    /* materiales que nombran las fachadas del Manzano: concreto requemado
+       gris claro, ventanería metálica negra, persianas de madera */
+    const texConcreto = texturaRuido({ base: "#CFCAC2", grano: 10, escala: 5 });
+    const texMadera = texturaRuido({ base: "#8A5B38", grano: 14, escala: 3, lineas: 5 });
+    const matConcreto = new THREE.MeshStandardMaterial({ map: texConcreto, roughness: 0.85, metalness: 0 });
+    const matPlaca = new THREE.MeshStandardMaterial({ map: texConcreto, color: 0xBDB7AE, roughness: 0.9, metalness: 0 });
+    const matMarco = new THREE.MeshStandardMaterial({ color: 0x1C1C1C, roughness: 0.45, metalness: 0.6 });
+    const matMadera = new THREE.MeshStandardMaterial({ map: texMadera, roughness: 0.7, metalness: 0 });
+    const matVidrio = new THREE.MeshStandardMaterial({
+      color: 0x9DB4BA, roughness: 0.04, metalness: 0.2, envMapIntensity: 1.4,
+      transparent: true, opacity: 0.32, depthWrite: false,
+    });
+    const techos = [];
     /* el agua se lee por el reflejo, no por el color: poca rugosidad */
     const matAgua = new THREE.MeshStandardMaterial({
       color: 0x2F6E72, roughness: 0.06, metalness: 0.15,
@@ -213,12 +295,26 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
         agua.receiveShadow = true;
         g.add(agua);
       }
-      const muros = geometriaMuros(n.muros, ALTO_MURO);
-      if (muros) {
-        const malla = new THREE.Mesh(muros, matMuro);
-        malla.castShadow = true;
-        malla.receiveShadow = true;
-        g.add(malla);
+      const sombra = (m, recibe = true) => { m.castShadow = true; m.receiveShadow = recibe; g.add(m); return m; };
+      if (n.solidos) {
+        /* casa leída por capas: muros a su altura real, vanos y placa */
+        const alto = n.alturaMuro;
+        const s = extruir(n.solidos, 0, alto);
+        if (s) sombra(new THREE.Mesh(s, matConcreto));
+        const v = geometriaVanos(n.vanos, alto);
+        if (v.muro) sombra(new THREE.Mesh(v.muro, matConcreto));
+        if (v.marco) sombra(new THREE.Mesh(v.marco, matMarco));
+        if (v.madera) sombra(new THREE.Mesh(v.madera, matMadera));
+        if (v.vidrio) g.add(new THREE.Mesh(v.vidrio, matVidrio));
+        /* hojas de puerta, abiertas como en la planta; los cortes las
+           muestran de piso a placa */
+        const hojas = (n.puertas ?? []).map((h) => tramo(h, 0, alto - 0.02, 0.04));
+        if (hojas.length) sombra(new THREE.Mesh(mergeGeometries(hojas), matMadera));
+        const p = extruir(n.placa.poly, n.placa.z, n.placa.grosor);
+        if (p) techos.push(sombra(new THREE.Mesh(p, matPlaca)));
+      } else {
+        const muros = geometriaMuros(n.muros, ALTO_MURO);
+        if (muros) sombra(new THREE.Mesh(muros, matMuro));
       }
       escena.add(g);
       return g;
@@ -296,7 +392,7 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
       const puestas = [];
       const candidatas = [];
       for (const t of etiquetas) {
-        if (!grupos[t.nivelIdx].visible) { t.el.style.display = "none"; continue; }
+        if (!grupos[t.nivelIdx].visible || t.tapada) { t.el.style.display = "none"; continue; }
         v.copy(t.v).project(camara);
         if (v.z >= 1 || Math.abs(v.x) > 1 || Math.abs(v.y) > 1) { t.el.style.display = "none"; continue; }
         candidatas.push({ t, x: (v.x * 0.5 + 0.5) * w, y: (-v.y * 0.5 + 0.5) * h, z: v.z });
@@ -327,8 +423,8 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
       matPasto.color.set(a.pasto);
     };
 
-    escenaRef.current = { grupos, ctrl, aplicarHora };
-    if (import.meta.env.DEV) window.__casa3d = { escena, grupos, pisos, camara };
+    escenaRef.current = { grupos, ctrl, aplicarHora, techos, etiquetas };
+    if (import.meta.env.DEV) window.__casa3d = { escena, grupos, pisos, camara, render, ctrl };
     setListo(true);
 
     return () => {
@@ -340,6 +436,8 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
       render.dispose();
       escena.traverse((o) => { o.geometry?.dispose?.(); });
       matMuro.dispose(); matPiso.dispose(); matPasto.dispose(); matAgua.dispose();
+      for (const m of [matConcreto, matPlaca, matMarco, matMadera, matVidrio]) m.dispose();
+      texConcreto.dispose(); texMadera.dispose();
       for (const pl of pisos) { pl.mat.dispose(); pl.tex.dispose(); }
       texMuro.dispose(); texPiso.dispose(); texPasto.dispose();
       pmrem.dispose();
@@ -364,6 +462,15 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
     e.grupos.forEach((g, i) => { g.visible = nivel === "todo" || nivel === i; });
   }, [nivel, listo]);
 
+  /* con techo o sin él: sin techo se ve la distribución y los nombres */
+  useEffect(() => {
+    const e = escenaRef.current;
+    if (!e) return;
+    e.techos.forEach((t) => { t.visible = techo; });
+    e.etiquetas.forEach((t) => { t.tapada = techo && e.techos.length > 0; });
+  }, [techo, listo]);
+
+  const tieneTecho = niveles.some((n) => n.placa);
   if (!niveles.length) return null;
 
   return (
@@ -382,6 +489,14 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
             </button>
           ))}
         </div>
+      )}
+
+      {tieneTecho && (
+        <button onClick={() => setTecho((t) => !t)} className="glass-pill"
+          style={{ position: "absolute", bottom: 12, right: 14, zIndex: 3, padding: "9px 16px", fontSize: 12,
+            cursor: "pointer", border: "none", color: "#E5BC8B" }}>
+          {techo ? "Quitar techo" : "Poner techo"}
+        </button>
       )}
 
       <div className="glass-pill" style={{ position: "absolute", top: 14, right: 14, zIndex: 3, display: "flex", gap: 3, padding: 4 }}>
