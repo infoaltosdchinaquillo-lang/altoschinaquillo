@@ -10,7 +10,7 @@ Escala: los planos están a 1:50, así que 1 punto PDF = 0,01764 m.
 
 Salida: src/casas3d.js  ·  Uso: python scripts/muros3d.py
 """
-import json, math, os, unicodedata, re
+import collections, json, math, os, unicodedata, re
 import pymupdf, numpy as np, cv2
 
 GROSOR_ARQ = 0.72          # la capa de arquitectura
@@ -23,9 +23,17 @@ LADO_TEXTURA = 2048        # píxeles del lado mayor de la textura del piso
 
 PLANOS = [
     {"pdf": "PLANTA casa manzano.pdf", "modelo": "manzano", "nivel": "Planta única", "alturaMuro": 2.5,
-     "capas": True, "placa": 0.30},
-    {"pdf": "PLANTA 1.pdf", "modelo": "grande", "nivel": "Nivel 1", "alturaMuro": 2.5},
-    {"pdf": "PLANTA 2.pdf", "modelo": "grande", "nivel": "Nivel 2", "alturaMuro": 2.5},
+     "capas": True, "placa": 0.30,
+     # corte B-B' y fachada frontal: la terraza y el terreno quedan 0,50 m
+     # bajo el piso de la casa; piscina 1,60 m y jacuzzi 1,10 m de hondo,
+     # con muro de 0,15 m; el espejo de agua va a nivel de la terraza
+     "terreno": -0.50, "bordePiscina": 0.15, "piscina": {"Piscina": 1.60, "Jacuzzi": 1.10}},
+    # MR 101: corte A-A'. El nivel social (N+0) tiene 2,40 m libres y placa
+    # de 0,30; el de habitaciones está DEBAJO, en N-2.70 (2,40 + 0,30)
+    {"pdf": "PLANTA 1.pdf", "modelo": "grande", "nivel": "Nivel 1", "alturaMuro": 2.40,
+     "capas": True, "placa": 0.30, "z": 0, "margen": 9, "pisoGris": True, "cierre": 0.9},
+    {"pdf": "PLANTA 2.pdf", "modelo": "grande", "nivel": "Nivel 2", "alturaMuro": 2.40,
+     "capas": True, "placa": 0.30, "z": -2.70, "margen": 9, "pisoGris": True, "cierre": 0.9},
 ]
 
 AMBIENTES = {
@@ -150,6 +158,7 @@ PASO_MASK = 0.01            # metros por píxel de la máscara de muros
 # para reconocerlo al regenerar. Tipos:
 #   ventana  vidrio entre antepecho y dintel, muro abajo y arriba
 #   persiana listones de madera entre antepecho y dintel
+#   madera   puerta maciza de madera entre antepecho y dintel
 #   abierto  vano sin cerramiento (se deja libre de piso a placa)
 #   macizo   muro dibujado sin relleno en la planta: muro completo
 # Una entrada con `a` y `b` es un vano que la planta no muestra (queda por
@@ -197,6 +206,45 @@ VANOS = {
         # POR CONFIRMAR con la arquitecta: línea delgada entre comedor y el paso
         # de jardineras del patio; puede ser vidrio fijo. Se deja abierto.
         {"en": [6.81, 2.19], "tipo": "abierto", "fuente": "POR CONFIRMAR"},
+    ],
+
+    # ── MR 101, nivel social (N+0) ── hoja FACHADA 1/2 y CORTES, escaladas
+    # con sus cotas (2,40 libre, 2,70 piso a piso)
+    "grande/Nivel 1": [
+        {"en": [-2.5, -8.02], "tipo": "ventana", "z0": 0, "z1": 2.4, "fuente": "Fachada frontal, ventanería fija 2.40"},
+        {"en": [5.79, -7.02], "tipo": "ventana", "z0": 0, "z1": 2.22, "fuente": "Fachada lateral der., 1.73 x 2.22"},
+        {"en": [5.82, -1.37], "tipo": "ventana", "z0": 0, "z1": 2.22,
+         "fuente": "POR CONFIRMAR: fachada lateral der. la dibuja con listones (1.81 x 1.99)"},
+        {"en": [-2.46, 0.13], "tipo": "ventana", "z0": 1.26, "z1": 2.12, "fuente": "Fachada posterior, 1.12"},
+        {"en": [-4.95, 0.13], "tipo": "ventana", "z0": 1.26, "z1": 2.12, "fuente": "Fachada posterior, 2.21"},
+        {"en": [-9.12, 0.54], "tipo": "ventana", "z0": 1.61, "z1": 2.12,
+         "fuente": "POR CONFIRMAR: la fachada posterior muestra 2.25 de ancho y la planta 1.07"},
+        {"en": [0.09, 0.02], "tipo": "madera", "z0": 0, "z1": 2.4, "fuente": "Fachada posterior, puerta en madera maciza 2.10"},
+        # bloque de la despensa: muros dibujados sin relleno (corte A-A')
+        {"en": [-9.05, 0.07], "tipo": "macizo", "fuente": "Planta + corte A-A', despensa"},
+        {"en": [-9.07, -5.76], "tipo": "macizo", "fuente": "Planta + corte A-A', despensa"},
+        {"en": [-7.39, -1.24], "tipo": "macizo", "fuente": "Planta, muro con puerta"},
+        {"en": [-10.65, -1.25], "tipo": "macizo", "fuente": "Planta, muro exterior"},
+        {"en": [-10.65, -4.26], "tipo": "macizo", "fuente": "Planta, muro exterior"},
+        {"en": [-7.42, -4.26], "tipo": "macizo", "fuente": "Planta, muro con puerta"},
+    ],
+    # ── MR 101, nivel de habitaciones (N-2.70) ──
+    "grande/Nivel 2": [
+        {"en": [-7.98, -5.71], "tipo": "ventana", "z0": 0, "z1": 2.4, "fuente": "Fachada lateral izq., ventanería 5.65 de piso a placa"},
+        {"en": [-4.14, -7.65], "tipo": "ventana", "z0": 0, "z1": 2.4, "fuente": "Fachada frontal, ventanería de piso a placa"},
+        {"en": [0.21, -7.06], "tipo": "ventana", "z0": 0.45, "z1": 2.4, "fuente": "Fachada frontal, antepecho .45"},
+        {"en": [4.37, -7.06], "tipo": "ventana", "z0": 0.45, "z1": 2.4, "fuente": "Fachada frontal, antepecho .45"},
+        {"en": [0.1, 0.02], "tipo": "ventana", "z0": 0, "z1": 2.4, "fuente": "Fachada posterior, corrediza 2.10 x 2.40"},
+        {"en": [-2.5, 0.07], "tipo": "ventana", "z0": 0, "z1": 2.4, "fuente": "Fachada posterior, corrediza 2.10 x 2.40"},
+        {"en": [5.86, -1.47], "tipo": "ventana", "z0": 0, "z1": 2.3,
+         "fuente": "POR CONFIRMAR: fachada lateral der., ventana alta de 1.30"},
+        {"en": [-9.06, 0.08], "tipo": "macizo", "fuente": "Fachada posterior: muro en fachaleta, sin vanos"},
+        {"en": [-10.65, -1.25], "tipo": "macizo", "fuente": "POR CONFIRMAR: muro oeste del baño principal"},
+        {"en": [-3.32, -3.36], "tipo": "abierto", "fuente": "Planta: paso interior"},
+        {"en": [-1.23, -1.31], "tipo": "abierto", "fuente": "Planta: estudio abierto al hall"},
+        {"en": [5.76, -1.7], "tipo": "abierto", "fuente": "Planta: salida lateral junto a la escalera"},
+        {"en": [-7.44, -2.04], "tipo": "abierto", "fuente": "Planta: walk-in closet"},
+        {"en": [-7.39, -4.2], "tipo": "abierto", "fuente": "POR CONFIRMAR: lado del walk-in closet"},
     ],
 }
 
@@ -423,7 +471,7 @@ def por_capas(pg, M, caja, cx, cy, plano, etiquetas_):
     am = lambda u, v: [round((u / esc + x0 - cx) * K, 3), round((cy - (v / esc + y0)) * K, 3)]
     alto = plano["alturaMuro"]
 
-    tabla = VANOS.get(plano["modelo"], [])
+    tabla = VANOS.get(f'{plano["modelo"]}/{plano["nivel"]}', VANOS.get(plano["modelo"], []))
     a_px = lambda X, Y: (((X / K + cx) - x0) * esc, ((cy - Y / K) - y0) * esc)
 
     # ── vanos detectados: ventanas, puertas y huecos sin dibujo propio ──
@@ -497,7 +545,7 @@ def por_capas(pg, M, caja, cx, cy, plano, etiquetas_):
             usadas.add(dato[1])
             if t["tipo"] in ("abierto", "puerta"):
                 continue
-            z0, z1 = (0, alto) if t["tipo"] == "macizo" else (t["z0"], t["z1"])
+            z0, z1 = (0, alto) if t["tipo"] == "macizo" else (t["z0"], min(t["z1"], alto))
             vanos.append({"tipo": t["tipo"], "a": A, "b": B, "grosor": base["grosor"],
                           "z0": z0, "z1": z1})
         elif clase == "P":
@@ -511,19 +559,55 @@ def por_capas(pg, M, caja, cx, cy, plano, etiquetas_):
     # al ras de la fachada (los voladizos no están en la planta)
     for pa, pb, gr in trazos:
         cv2.line(huella, tuple(map(int, pa)), tuple(map(int, pb)), 255, max(int(gr), 8))
+    # si la planta sombrea el piso interior en gris (MR 101), ese sombreado es
+    # la huella de la casa tal como la dibujó la arquitecta
+    if plano.get("pisoGris"):
+        for d in pg.get_drawings():
+            f_ = d.get("fill")
+            if d["type"] == "fs" and (d.get("layer") or "") == "0" and f_ and all(abs(c - 0.82) < 0.025 for c in f_):
+                q = [p for it in d["items"] for p in pts_item(it, M)]
+                if q and all(caja[0] <= p.x <= caja[2] and caja[1] <= p.y <= caja[3] for p in q):
+                    cv2.fillPoly(huella, [np.array([px(p.x, p.y) for p in q], np.int32)], 255)
+    # entre un ventanal y la columna vecina quedan rendijas de unos cm: se
+    # cierran antes de rellenar, o el relleno se escapa por ahí
+    # (con un cuadrado: una elipse redondea las esquinas de la placa). En la
+    # MR 101 se cierra hasta 0,90 m: hay tramos de 0,73 dibujados sin relleno
+    k = int(plano.get("cierre", 0.6) / PASO_MASK) + 1
+    huella = cv2.morphologyEx(huella, cv2.MORPH_CLOSE, np.ones((k, k), np.uint8))
     cs, _ = cv2.findContours(huella, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     llena = np.zeros_like(mask)
     cv2.drawContours(llena, cs, -1, 255, -1)
+    # fuera quedan senderos angostos y piezas sueltas (el sombreado gris de
+    # la MR 101 incluye el camino al parqueadero): solo la casa
+    llena = cv2.morphologyEx(llena, cv2.MORPH_OPEN, np.ones((41, 41), np.uint8))
+    n_, lab_, st_, _ = cv2.connectedComponentsWithStats(llena)
+    if n_ > 1:
+        mayor = st_[1:, 4].max()
+        for j in range(1, n_):
+            if st_[j, 4] < 0.15 * mayor:
+                llena[lab_ == j] = 0
+    zocalo = llena.copy()             # el piso sí incluye el patio descubierto
     for e in etiquetas_:
         if e["t"] in plano.get("descubiertos", ("Patio",)):
-            semilla = px(e["x"], e["y"])
             libre = cv2.bitwise_not(huella)
             m_ = np.zeros((libre.shape[0] + 2, libre.shape[1] + 2), np.uint8)
-            cv2.floodFill(libre, m_, semilla, 128, flags=4 | (255 << 8) | cv2.FLOODFILL_MASK_ONLY)
+            cv2.floodFill(libre, m_, px(e["x"], e["y"]), 128, flags=4 | (255 << 8) | cv2.FLOODFILL_MASK_ONLY)
             patio = cv2.dilate(m_[1:-1, 1:-1], np.ones((5, 5), np.uint8))
+            m2 = (patio > 0).sum() * PASO_MASK ** 2
+            if m2 > 40:
+                raise SystemExit(f'{e["t"]}: el recinto no cierra ({m2:.0f} m²); revisa los vanos que lo rodean')
+            print(f'    {e["t"]} descubierto: {m2:.1f} m²')
             llena[patio > 0] = 0
     placa = [[[am(*q) for q in anillo] for anillo in poly] for poly in poligonos(llena)]
-    solidos = [[[am(*q) for q in anillo] for anillo in poly] for poly in poligonos(mask)]
+    # solo los muros que tocan la casa: afuera hay bordes de senderos y
+    # escaleras dibujados con el mismo relleno
+    cerca = cv2.dilate(zocalo, np.ones((51, 51), np.uint8))
+    n_, lab_, _, _ = cv2.connectedComponentsWithStats(mask)
+    propios = np.zeros_like(mask)
+    for j in range(1, n_):
+        if (cerca[lab_ == j] > 0).any():
+            propios[lab_ == j] = 255
+    solidos = [[[am(*q) for q in anillo] for anillo in poly] for poly in poligonos(propios)]
 
     if os.environ.get("MUROS3D_DIAG"):
         diagnostico(pg, M, caja, mask, crudos, sin_dato, plano, os.environ["MUROS3D_DIAG"])
@@ -537,8 +621,138 @@ def por_capas(pg, M, caja, cx, cy, plano, etiquetas_):
     if sobran:
         print(f"  ojo: entradas de VANOS que no calzaron con ningún vano: {sobran}")
     print(f"    {len(solidos)} sólidos · {len(vanos)} vanos con cerramiento · placa de {len(placa)} piezas")
-    return {"solidos": solidos, "vanos": vanos, "puertas": hojas_m,
-            "placa": {"z": alto, "grosor": plano["placa"], "poly": placa}}
+    out = {"solidos": solidos, "vanos": vanos, "puertas": hojas_m,
+           "placa": {"z": alto, "grosor": plano["placa"], "poly": placa},
+           "zocalo": [[[am(*q) for q in anillo] for anillo in poly] for poly in poligonos(zocalo)]}
+
+    # ── muebles y exterior ──
+    a_mask = lambda poly: np.array([[int(v) for v in a_px(*q)] for q in poly], np.int32)
+    agua = np.zeros_like(mask)
+    for a in plano.get("_agua", []):
+        cv2.fillPoly(agua, [a_mask(a["poly"])], 255)
+    lugares = [(e["t"], px(e["x"], e["y"])) for e in etiquetas_]
+    out["muebles"] = muebles(pg, M, caja, llena, mask, lugares, am)
+    if "terreno" in plano:
+        out["exterior"] = exterior(pg, M, caja, llena, agua, am, plano)
+    return out
+
+
+def rellenar_capa(pg, M, caja, cumple):
+    """Rasteriza los trazos que cumplen `cumple(dibujo)` y rellena las
+    figuras cerradas: cada mueble queda como una mancha maciza."""
+    x0, y0, x1, y1 = caja
+    esc = K / PASO_MASK
+    W, H = int((x1 - x0) * esc) + 1, int((y1 - y0) * esc) + 1
+    px = lambda p: (int(round((p.x - x0) * esc)), int(round((p.y - y0) * esc)))
+    img = np.zeros((H, W), np.uint8)
+    for d in pg.get_drawings():
+        if not cumple(d):
+            continue
+        for it in d["items"]:
+            q = pts_item(it, M)
+            if len(q) >= 2:
+                cv2.polylines(img, [np.array([px(p) for p in q], np.int32)], it[0] in ("re", "qu"), 255, 2)
+    # lo que no se alcanza inundando desde el borde está encerrado: se rellena.
+    # Se agrega un marco vacío alrededor: el rótulo de la hoja trae líneas
+    # que cruzan el recorte y la esquina podría quedar encerrada
+    fuera = cv2.copyMakeBorder(img, 2, 2, 2, 2, cv2.BORDER_CONSTANT, value=0)
+    m_ = np.zeros((H + 6, W + 6), np.uint8)
+    cv2.floodFill(fuera, m_, (0, 0), 128)
+    return np.where(fuera[2:-2, 2:-2] == 128, 0, 255).astype(np.uint8)
+
+
+""" Muebles: posición y tamaño salen de la planta (capas de mobiliario,
+carpintería y aparatos sanitarios). Las ALTURAS no están en los planos:
+son medidas estándar de mobiliario, solo para que la maqueta se lea. """
+ALTO_MUEBLE = {"cama": 0.5, "closet": 2.2, "mesita": 0.5, "lavamanos": 0.85,
+               "sofa": 0.75, "mesa": 0.75, "silla": 0.45, "tapete": 0.015,
+               "sanitario": 0.4, "meson": 0.9}
+
+
+def muebles(pg, M, caja, huella, mask, lugares, am):
+    capa = lambda *nombres: (lambda d: (d.get("layer") or "") in nombres)
+    grupos = [
+        ("carpinteria", rellenar_capa(pg, M, caja, capa("carpinteria"))),
+        ("I-FURN", rellenar_capa(pg, M, caja, capa("I-FURN"))),
+        ("P-SANR-FIXT", rellenar_capa(pg, M, caja, capa("P-SANR-FIXT"))),
+        # mesones: trazo de arquitectura que no es muro, dentro de la casa
+        ("meson", rellenar_capa(pg, M, caja, lambda d: (d.get("layer") or "") == "0"
+                                and round(d.get("width") or 0, 2) == GROSOR_ARQ and d["type"] == "s")),
+    ]
+    dentro = cv2.erode(huella, np.ones((9, 9), np.uint8))
+    out = []
+    diag = os.environ.get("MUROS3D_DIAG")
+    for nombre, img in grupos:
+        if diag:
+            cv2.imwrite(f"{diag}/mueb_{len(os.listdir(diag))}_{nombre}.png", cv2.resize(np.dstack([img, dentro, mask]), None, fx=0.25, fy=0.25))
+        img = img & dentro
+        if nombre == "meson":
+            img = img & ~cv2.dilate(mask, np.ones((7, 7), np.uint8))
+            img = cv2.morphologyEx(img, cv2.MORPH_OPEN, np.ones((15, 15), np.uint8))
+        n, lab, st, cen = cv2.connectedComponentsWithStats(img)
+        for i in range(1, n):
+            area = st[i][4] * PASO_MASK ** 2
+            if area < 0.05:
+                continue
+            comp = (lab == i).astype(np.uint8) * 255
+            cs, _ = cv2.findContours(comp, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            c = max(cs, key=cv2.contourArea)
+            (_, _), (w, h), _ = cv2.minAreaRect(c)
+            L, S = max(w, h) * PASO_MASK, min(w, h) * PASO_MASK
+            # el ambiente donde cae el mueble decide lo que es (una isla de
+            # cocina y una cama se dibujan igual)
+            cerca = min(lugares, key=lambda l: math.dist(cen[i], l[1]), default=("", (0, 0)))[0]
+            cerca_bano = any(math.dist(cen[i], p) < 150 for t_, p in lugares if t_.startswith("Baño"))
+            if nombre in ("carpinteria", "I-FURN") and cerca == "Cocina" and area >= 1.5:
+                t = "meson"
+            elif nombre == "carpinteria":
+                social = cerca in ("Cocina", "Comedor", "Sala", "Hall", "Estudio")
+                t = ("cama" if S >= 1.2 and L >= 1.8 and not social else
+                     "mesa" if S >= 0.7 and area >= 0.8 else
+                     "lavamanos" if cerca_bano and S < 0.7 else
+                     "closet" if S <= 0.75 and L >= 0.9 else "mesita")
+            elif nombre == "I-FURN":
+                if S < 0.2:
+                    continue
+                social = cerca in ("Cocina", "Comedor", "Sala", "Hall", "Estudio")
+                t = ("tapete" if area >= 3 and not social else
+                     "mesa" if area >= 1.5 and S >= 0.7 else
+                     "sofa" if L >= 1.4 and S >= 0.3 else
+                     "mesa" if S >= 0.7 and area >= 0.8 else "silla")
+            elif nombre == "P-SANR-FIXT":
+                t = "sanitario"
+            else:
+                # un mesón es angosto (0,4 a 0,8 m) aunque tenga forma de L;
+                # lo ancho es un cuarto cerrado por el trazo de los muros
+                ancho = 2 * cv2.distanceTransform(comp, cv2.DIST_L2, 5).max() * PASO_MASK
+                if 0.4 <= ancho <= 0.8 and 0.4 <= area <= 5:
+                    t = "meson"
+                elif 0.8 < ancho <= 1.3 and area <= 3:
+                    t = "mesa"          # la del comedor va con el trazo de arquitectura
+                else:
+                    continue
+            poly = cv2.approxPolyDP(c, 1.5, True)[:, 0, :]
+            out.append({"t": t, "h": ALTO_MUEBLE[t], "poly": [am(*q) for q in poly]})
+    print(f"    muebles: " + ", ".join(f"{k} {v}" for k, v in collections.Counter(m["t"] for m in out).items()))
+    return out
+
+
+def exterior(pg, M, caja, huella, agua, am, plano):
+    """Deck de madera, piedras de paso y borde de la piscina."""
+    fuera_casa = cv2.bitwise_not(cv2.dilate(huella, np.ones((5, 5), np.uint8)))
+    deck = rellenar_capa(pg, M, caja, lambda d: (d.get("layer") or "") == "deck")
+    # las tablas del deck se juntan en una sola superficie
+    deck = cv2.morphologyEx(deck, cv2.MORPH_CLOSE, np.ones((25, 25), np.uint8))
+    deck = cv2.morphologyEx(deck, cv2.MORPH_OPEN, np.ones((40, 40), np.uint8)) & fuera_casa
+    pasos = rellenar_capa(pg, M, caja, lambda d: (d.get("layer") or "").startswith("pisos externos"))
+    pasos = cv2.morphologyEx(pasos, cv2.MORPH_OPEN, np.ones((15, 15), np.uint8))
+    pasos &= fuera_casa & ~cv2.dilate(agua, np.ones((40, 40), np.uint8)) & ~deck
+    # borde de la piscina: el muro de 0,15 m del corte B, en todo el contorno
+    b = int(plano["bordePiscina"] / PASO_MASK)
+    borde = cv2.dilate(agua, cv2.getStructuringElement(cv2.MORPH_RECT, (2 * b + 1, 2 * b + 1))) & ~agua
+    a_m = lambda img: [[[am(*q) for q in anillo] for anillo in poly] for poly in poligonos(img)]
+    return {"nivel": plano["terreno"], "deck": a_m(deck), "pasos": a_m(pasos), "borde": a_m(borde),
+            "hueco": a_m(cv2.bitwise_or(agua, borde))}
 
 
 def diagnostico(pg, M, caja, mask, crudos, sin_dato, plano, carpeta):
@@ -570,6 +784,7 @@ def diagnostico(pg, M, caja, mask, crudos, sin_dato, plano, carpeta):
 
 
 casas = {}
+ORIGEN = {}
 for p in PLANOS:
     pg = pymupdf.open(f'C:/Users/maick/Downloads/{p["pdf"]}')[0]
     M = pg.rotation_matrix
@@ -580,7 +795,7 @@ for p in PLANOS:
 
     # la casa es la zona donde están los ambientes, con un margen
     ex = [e["x"] for e in E]; ey = [e["y"] for e in E]
-    m = MARGEN_M / K
+    m = p.get("margen", MARGEN_M) / K
     x0, x1 = min(ex) - m, max(ex) + m
     y0, y1 = min(ey) - m, max(ey) + m
     dentro = ((S[:, [0, 2]] >= x0) & (S[:, [0, 2]] <= x1)).all(1) & \
@@ -591,6 +806,9 @@ for p in PLANOS:
     # a metros, con el origen en el centro de la planta y la Y hacia el norte
     cx = (S[:, [0, 2]].min() + S[:, [0, 2]].max()) / 2
     cy = (S[:, [1, 3]].min() + S[:, [1, 3]].max()) / 2
+    # los niveles de una misma casa comparten hoja (las curvas de nivel caen
+    # en las mismas coordenadas): todos usan el origen del primero
+    cx, cy = ORIGEN.setdefault(p["modelo"], (cx, cy))
     muros = [[round((a - cx) * K, 2), round((cy - b) * K, 2),
               round((c - cx) * K, 2), round((cy - d) * K, 2)] for a, b, c, d in S]
     ambientes = [{"t": e["t"], "x": round((e["x"] - cx) * K, 2), "y": round((cy - e["y"]) * K, 2)} for e in E]
@@ -640,11 +858,15 @@ for p in PLANOS:
     ancho = (S[:, [0, 2]].max() - S[:, [0, 2]].min()) * K
     fondo = (S[:, [1, 3]].max() - S[:, [1, 3]].min()) * K
     nivel = {
-        "nivel": p["nivel"], "alturaMuro": p["alturaMuro"],
+        "nivel": p["nivel"], "alturaMuro": p["alturaMuro"], "z": p.get("z"),
         "muros": muros, "ambientes": ambientes, "piso": piso, "agua": agua,
         "textura": textura,
     }
+    for a in agua:
+        if a["t"] in p.get("piscina", {}):
+            a["prof"] = p["piscina"][a["t"]]
     if p.get("capas"):
+        p["_agua"] = agua
         nivel.update(por_capas(pg, M, (x0, y0, x1, y1), cx, cy, p, E))
         del nivel["muros"]         # los reemplazan `solidos` y `vanos`
     casas.setdefault(p["modelo"], []).append(nivel)

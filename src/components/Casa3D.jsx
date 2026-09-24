@@ -115,9 +115,42 @@ function geometriaMuros(muros, altura) {
   return partes.length ? mergeGeometries(partes) : null;
 }
 
+/* Muebles: color por tipo. La planta da la posición y el tamaño; la altura
+   es estándar (ver ALTO_MUEBLE en scripts/muros3d.py). */
+const COLOR_MUEBLE = {
+  cama: 0xEEEAE3, closet: 0x9A7250, mesita: 0x8C6546, lavamanos: 0xF3F1ED,
+  sofa: 0xD6CCBC, mesa: 0x6E4B33, silla: 0xB9A58C, tapete: 0xC7BCAA,
+  sanitario: 0xF6F5F2, meson: 0x5E5954,
+};
+
+/* azulejo verde agua de la piscina, como en el render de la arquitecta */
+function texturaAzulejo() {
+  const c = document.createElement("canvas");
+  c.width = c.height = 256;
+  const g = c.getContext("2d");
+  const n = 4, l = 256 / n;
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    const v = Math.random() * 18 - 9;
+    g.fillStyle = `rgb(${88 + v},${166 + v},${150 + v})`;
+    g.fillRect(i * l, j * l, l, l);
+  }
+  g.strokeStyle = "rgba(235,240,232,0.85)";
+  g.lineWidth = 3;
+  for (let k = 0; k <= n; k++) {
+    g.beginPath(); g.moveTo(k * l, 0); g.lineTo(k * l, 256); g.stroke();
+    g.beginPath(); g.moveTo(0, k * l); g.lineTo(256, k * l); g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(2.5, 2.5);             // 4 piezas cada 0,40 m
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 /* ── Casas leídas por capas (ver scripts/muros3d.py) ──
    `solidos`: planta de muros y columnas con sus huecos interiores.
-   `vanos`:   ventanas y persianas, con las alturas de fachadas y cortes.
+   `vanos`:   ventanas, persianas y puertas macizas, con las alturas de
+              fachadas y cortes.
    `placa`:   cubierta plana (placa de concreto), sin el patio descubierto. */
 
 function forma(anillos) {
@@ -170,6 +203,8 @@ function geometriaVanos(vanos, alto) {
     }
     if (v.tipo === "ventana") {
       vidrio.push(tramo(v, v.z0 + MARCO, v.z1 - MARCO, 0.02));
+    } else if (v.tipo === "madera") {
+      madera.push(tramo(v, v.z0 + MARCO, v.z1 - MARCO, gr * 0.4));   // puerta maciza
     } else if (v.tipo === "persiana") {
       // listones horizontales, como los dibuja la fachada
       for (let z = v.z0 + MARCO + 0.03; z < v.z1 - MARCO - 0.02; z += 0.09) {
@@ -260,7 +295,8 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
     const texConcreto = texturaRuido({ base: "#CFCAC2", grano: 10, escala: 5 });
     const texMadera = texturaRuido({ base: "#8A5B38", grano: 14, escala: 3, lineas: 5 });
     const matConcreto = new THREE.MeshStandardMaterial({ map: texConcreto, roughness: 0.85, metalness: 0 });
-    const matPlaca = new THREE.MeshStandardMaterial({ map: texConcreto, color: 0xBDB7AE, roughness: 0.9, metalness: 0 });
+    // transparente desde el principio: cambiarlo en caliente obliga a recompilar
+    const matPlaca = new THREE.MeshStandardMaterial({ map: texConcreto, color: 0xBDB7AE, roughness: 0.9, metalness: 0, transparent: true });
     const matMarco = new THREE.MeshStandardMaterial({ color: 0x1C1C1C, roughness: 0.45, metalness: 0.6 });
     const matMadera = new THREE.MeshStandardMaterial({ map: texMadera, roughness: 0.7, metalness: 0 });
     const matVidrio = new THREE.MeshStandardMaterial({
@@ -268,6 +304,25 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
       transparent: true, opacity: 0.32, depthWrite: false,
     });
     const techos = [];
+    const estado = { techo: true, opacidad: -1 };
+    /* interior: concreto pulido claro (corte B); exterior: deck de madera,
+       piedra de los pasos, azulejo verde de la piscina (render de la
+       arquitecta) */
+    const texPisoInt = texturaRuido({ base: "#D9D3C9", grano: 6, escala: 3 });
+    const texDeck = texturaRuido({ base: "#7A4E30", grano: 12, escala: 1, lineas: 6 });
+    texDeck.repeat.set(1.2, 1.2);
+    const texAzulejo = texturaAzulejo();
+    // las formas planas quedan mirando hacia abajo al acostarlas: dos caras
+    const matPisoInt = new THREE.MeshStandardMaterial({ map: texPisoInt, roughness: 0.55, metalness: 0, side: THREE.DoubleSide });
+    const matDeck = new THREE.MeshStandardMaterial({ map: texDeck, roughness: 0.75, metalness: 0 });
+    const matPiedra = new THREE.MeshStandardMaterial({ color: 0xCDC5B8, map: texConcreto, roughness: 0.95, metalness: 0 });
+    const matAzulejo = new THREE.MeshStandardMaterial({ map: texAzulejo, roughness: 0.3, metalness: 0, side: THREE.BackSide });
+    const matEspejo = new THREE.MeshStandardMaterial({
+      color: 0x5FC0BE, roughness: 0.03, metalness: 0.1, envMapIntensity: 1.6,
+      transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide,
+    });
+    const matMuebles = Object.fromEntries(Object.entries(COLOR_MUEBLE).map(([k, c]) => [k,
+      new THREE.MeshStandardMaterial({ color: c, roughness: k === "sanitario" || k === "lavamanos" ? 0.25 : 0.8, metalness: 0 })]));
     /* el agua se lee por el reflejo, no por el color: poca rugosidad */
     const matAgua = new THREE.MeshStandardMaterial({
       color: 0x2F6E72, roughness: 0.06, metalness: 0.15,
@@ -275,21 +330,46 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
     });
 
     /* un grupo por nivel, para poder mostrarlos por separado */
+    /* cota de cada nivel: la de los cortes (en la MR 101 las habitaciones
+       van DEBAJO, en N-2.70); si no la trae, se apilan hacia arriba */
+    const cota = (n, i) => n.z ?? i * ALTO_NIVEL;
+    const arriba = niveles.reduce((k, n, i) => (cota(n, i) > cota(niveles[k], k) ? i : k), 0);
     const grupos = niveles.map((n, i) => {
       const g = new THREE.Group();
-      g.position.y = i * ALTO_NIVEL;
-      const losa = new THREE.Mesh(geometriaPiso(n.piso), matPiso);
-      losa.position.y = 0;        // la losa baja desde 0; los muros apoyan encima
-      losa.receiveShadow = true;
-      g.add(losa);
+      g.position.y = cota(n, i);
+      const ext = n.exterior;
+      if (ext) {
+        /* zócalo: la casa se levanta sobre el terreno hasta su piso */
+        const z = extruir(n.zocalo, ext.nivel, -ext.nivel);
+        if (z) { const m = new THREE.Mesh(z, matConcreto); m.castShadow = m.receiveShadow = true; g.add(m); }
+        const piso = new THREE.Mesh(new THREE.ShapeGeometry(n.zocalo.map(forma)), matPisoInt);
+        piso.rotation.x = Math.PI / 2;
+        piso.position.y = 0.004;
+        piso.receiveShadow = true;
+        g.add(piso);
+      } else if (n.solidos) {
+        /* placa de piso bajo el nivel (en la MR 101, el voladizo) */
+        const z = extruir(n.zocalo, -n.placa.grosor, n.placa.grosor);
+        if (z) { const m = new THREE.Mesh(z, matConcreto); m.castShadow = m.receiveShadow = true; g.add(m); }
+        const piso = new THREE.Mesh(new THREE.ShapeGeometry(n.zocalo.map(forma)), matPisoInt);
+        piso.rotation.x = Math.PI / 2;
+        piso.position.y = 0.004;
+        piso.receiveShadow = true;
+        g.add(piso);
+      } else {
+        const losa = new THREE.Mesh(geometriaPiso(n.piso), matPiso);
+        losa.position.y = 0;        // la losa baja desde 0; los muros apoyan encima
+        losa.receiveShadow = true;
+        g.add(losa);
+      }
 
-      if (n.textura) {
+      if (n.textura && !n.solidos) {
         const pl = pisoConPlano(n.textura, cargador);
         pl.malla.position.y = 0.012;   // apenas sobre la losa, para que se vea
         g.add(pl.malla);
         pisos.push(pl);
       }
-      for (const a of n.agua ?? []) {
+      for (const a of ext ? [] : n.agua ?? []) {
         const agua = new THREE.Mesh(geometriaAgua(a.poly), matAgua);
         agua.position.y = 0.02;      // a ras de piso: si queda debajo, la losa la tapa
         agua.receiveShadow = true;
@@ -310,9 +390,42 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
            muestran de piso a placa */
         const hojas = (n.puertas ?? []).map((h) => tramo(h, 0, alto - 0.02, 0.04));
         if (hojas.length) sombra(new THREE.Mesh(mergeGeometries(hojas), matMadera));
-        const p = extruir(n.placa.poly, n.placa.z, n.placa.grosor);
+        /* la placa del nivel de abajo es el piso del de arriba: solo el
+           nivel más alto lleva techo propio */
+        const p = i === arriba ? extruir(n.placa.poly, n.placa.z, n.placa.grosor) : null;
         if (p) techos.push(sombra(new THREE.Mesh(p, matPlaca)));
-      } else {
+
+        /* muebles: planta y tamaño del plano; altura estándar */
+        const porTipo = {};
+        for (const m of n.muebles ?? []) (porTipo[m.t] ??= []).push(extruir([[m.poly]], 0, m.h));
+        for (const [t, geos] of Object.entries(porTipo)) sombra(new THREE.Mesh(mergeGeometries(geos), matMuebles[t]));
+      }
+      if (ext) {
+        const nv = ext.nivel;
+        const capa = (polys, alto, mat, base = nv) => {
+          const geo = extruir(polys, base, alto);
+          if (!geo) return;
+          const m = new THREE.Mesh(geo, mat);
+          m.castShadow = true; m.receiveShadow = true; g.add(m);
+        };
+        capa(ext.deck, 0.05, matDeck);
+        capa(ext.pasos, 0.03, matPiedra);
+        capa(ext.borde, 0.03, matPiedra);
+        /* vaso de la piscina: se ve por dentro (caras traseras), con el
+           fondo a la profundidad del corte B */
+        for (const a of n.agua ?? []) {
+          if (!a.prof) continue;
+          const vaso = new THREE.Mesh(extruir([[a.poly]], nv - a.prof, a.prof), matAzulejo);
+          vaso.receiveShadow = true;
+          g.add(vaso);
+          const espejo = new THREE.Mesh(new THREE.ShapeGeometry(forma([a.poly])), matEspejo);
+          espejo.rotation.x = Math.PI / 2;
+          espejo.position.y = nv - 0.06;
+          espejo.renderOrder = 2;
+          g.add(espejo);
+        }
+      }
+      if (!n.solidos) {
         const muros = geometriaMuros(n.muros, ALTO_MURO);
         if (muros) sombra(new THREE.Mesh(muros, matMuro));
       }
@@ -327,9 +440,23 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
     const radio = Math.max(tam.x, tam.z) * 0.62 + tam.y;
 
     /* el terreno: sin él la casa flota en el vacío */
-    const pasto = new THREE.Mesh(new THREE.CircleGeometry(radio * 4, 64), matPasto);
-    pasto.rotation.x = -Math.PI / 2;
-    pasto.position.set(centro.x, -0.22, centro.z);
+    const ext0 = niveles[0].exterior;
+    let pasto;
+    if (ext0) {
+      /* a nivel de la terraza, con el hueco de la piscina */
+      const disco = new THREE.Shape().absarc(centro.x, centro.z, radio * 4, 0, Math.PI * 2, false);
+      for (const poly of ext0.hueco) disco.holes.push(new THREE.Path(forma([poly[0]]).getPoints()));
+      pasto = new THREE.Mesh(new THREE.ShapeGeometry(disco, 64), matPasto);
+      pasto.rotation.x = Math.PI / 2;
+      pasto.position.y = ext0.nivel;
+      matPasto.side = THREE.DoubleSide;
+    } else {
+      pasto = new THREE.Mesh(new THREE.CircleGeometry(radio * 4, 64), matPasto);
+      pasto.rotation.x = -Math.PI / 2;
+      /* bajo la placa del nivel más bajo; el terreno real va en pendiente */
+      const bajo = Math.min(...niveles.map((n, i) => cota(n, i) - (n.placa?.grosor ?? 0.22)));
+      pasto.position.set(centro.x, bajo, centro.z);
+    }
     pasto.receiveShadow = true;
     escena.add(pasto);
 
@@ -376,9 +503,21 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
         el.textContent = a.t;
         capa.appendChild(el);
         const [x, z] = aTres(a.x, a.y);
-        etiquetas.push({ el, nivelIdx: i, v: new THREE.Vector3(x, i * ALTO_NIVEL + 1.4, z) });
+        etiquetas.push({ el, nivelIdx: i, v: new THREE.Vector3(x, (n.z ?? i * ALTO_NIVEL) + 1.4, z) });
       });
     });
+
+    /* el techo se desvanece al acercarse, para ver la distribución */
+    const ajustarTecho = () => {
+      if (!techos.length) return;
+      const d = camara.position.distanceTo(ctrl.target);
+      const f = estado.techo ? Math.min(Math.max((d - radio * 0.8) / (radio * 0.6), 0), 1) : 0;
+      if (f === estado.opacidad) return;
+      estado.opacidad = f;
+      matPlaca.opacity = f;
+      matPlaca.depthWrite = f > 0.5;
+      techos.forEach((t) => { t.visible = f > 0.02; t.castShadow = f > 0.5; });
+    };
 
     let vivo = true;
     const v = new THREE.Vector3();
@@ -386,13 +525,14 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
       if (!vivo) return;
       requestAnimationFrame(bucle);
       ctrl.update();
+      ajustarTecho();
       render.render(escena, camara);
 
       const { clientWidth: w, clientHeight: h } = cont;
       const puestas = [];
       const candidatas = [];
       for (const t of etiquetas) {
-        if (!grupos[t.nivelIdx].visible || t.tapada) { t.el.style.display = "none"; continue; }
+        if (!grupos[t.nivelIdx].visible || (techos.length && estado.opacidad > 0.5)) { t.el.style.display = "none"; continue; }
         v.copy(t.v).project(camara);
         if (v.z >= 1 || Math.abs(v.x) > 1 || Math.abs(v.y) > 1) { t.el.style.display = "none"; continue; }
         candidatas.push({ t, x: (v.x * 0.5 + 0.5) * w, y: (-v.y * 0.5 + 0.5) * h, z: v.z });
@@ -423,8 +563,8 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
       matPasto.color.set(a.pasto);
     };
 
-    escenaRef.current = { grupos, ctrl, aplicarHora, techos, etiquetas };
-    if (import.meta.env.DEV) window.__casa3d = { escena, grupos, pisos, camara, render, ctrl };
+    escenaRef.current = { grupos, ctrl, aplicarHora, estado };
+    if (import.meta.env.DEV) window.__casa3d = { escena, grupos, pisos, camara, render, ctrl, ajustarTecho };
     setListo(true);
 
     return () => {
@@ -436,8 +576,9 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
       render.dispose();
       escena.traverse((o) => { o.geometry?.dispose?.(); });
       matMuro.dispose(); matPiso.dispose(); matPasto.dispose(); matAgua.dispose();
-      for (const m of [matConcreto, matPlaca, matMarco, matMadera, matVidrio]) m.dispose();
-      texConcreto.dispose(); texMadera.dispose();
+      for (const m of [matConcreto, matPlaca, matMarco, matMadera, matVidrio, matPisoInt, matDeck,
+        matPiedra, matAzulejo, matEspejo, ...Object.values(matMuebles)]) m.dispose();
+      for (const t of [texConcreto, texMadera, texPisoInt, texDeck, texAzulejo]) t.dispose();
       for (const pl of pisos) { pl.mat.dispose(); pl.tex.dispose(); }
       texMuro.dispose(); texPiso.dispose(); texPasto.dispose();
       pmrem.dispose();
@@ -466,8 +607,7 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
   useEffect(() => {
     const e = escenaRef.current;
     if (!e) return;
-    e.techos.forEach((t) => { t.visible = techo; });
-    e.etiquetas.forEach((t) => { t.tapada = techo && e.techos.length > 0; });
+    e.estado.techo = techo;
   }, [techo, listo]);
 
   const tieneTecho = niveles.some((n) => n.placa);
