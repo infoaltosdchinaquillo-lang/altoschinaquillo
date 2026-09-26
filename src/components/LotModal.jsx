@@ -1,9 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { wa, cop, GALLERY, PLAN, planPago, proyectar, quedanEnRango, TERRENO, VALORIZACION_NOTA } from "../data";
 import { IconWa, IconCheck, IconClose, IconExpand, Dot, Lightbox, useLockScroll } from "./ui";
 
+/* three.js pesa: el visor se carga solo si alguien abre la pestaña */
+const CasaEnLote = lazy(() => import("./CasaEnLote"));
+
 const TABS = [
   { k: "info",   l: "Detalles" },
+  { k: "casa",   l: "Tu casa aquí" },
   { k: "pago",   l: "Financiación" },
   { k: "valor",  l: "Valorización" },
 ];
@@ -166,6 +170,13 @@ export default function LotModal({ lot, onClose, onCompare, inCompare }) {
                     )}
                   </div>
                 </div>
+              )}
+
+              {tab === "casa" && (
+                <Suspense fallback={<div className="glass" style={{ height: 320, display: "grid", placeItems: "center" }}>
+                  <span className="meta">Levantando la casa sobre el lote…</span></div>}>
+                  <CasaEnLote lot={lot} />
+                </Suspense>
               )}
 
               {tab === "pago" && (

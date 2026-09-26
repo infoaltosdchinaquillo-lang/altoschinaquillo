@@ -9,6 +9,7 @@ import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { GTAOPass } from "three/examples/jsm/postprocessing/GTAOPass.js";
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { CASAS_3D } from "../casas3d";
+import { dentroDe } from "../loteTerreno";
 
 /* ══════════════════════════════════════════════════
    MAQUETA 3D DE LA CASA
@@ -274,6 +275,142 @@ function geometriaArboles(arboles) {
   return { tronco: unir(troncos), copas: copas.map(unir) };
 }
 
+/* ── La casa sobre un lote ──
+   Se gira la casa (plano de la arquitecta: X oriente, Y norte) un ángulo φ
+   y se para en el punto interior del lote. El terreno del lote se corta y se
+   rellena donde va la casa (una plataforma), y se empalma con la ladera en
+   un anillo de 4 m. Es una implantación ilustrativa: la real la define el
+   diseño con la topografía del lote. */
+const aLote = (p, phi) => [p[0] * Math.cos(phi) - p[1] * Math.sin(phi), p[0] * Math.sin(phi) + p[1] * Math.cos(phi)];
+const aCasa = (p, phi) => [p[0] * Math.cos(phi) + p[1] * Math.sin(phi), -p[0] * Math.sin(phi) + p[1] * Math.cos(phi)];
+const areaPoly = (p) => {
+  let a = 0;
+  for (let i = 0; i < p.length; i++) { const [x1, y1] = p[i], [x2, y2] = p[(i + 1) % p.length]; a += x1 * y2 - x2 * y1; }
+  return Math.abs(a) / 2;
+};
+
+/* huella de cada nivel, lo exterior (deck, piscina) y cuánto ocupa la casa */
+function datosHuella(niveles) {
+  const bajo = niveles.reduce((a, n) => ((n.z ?? 0) < (a.z ?? 0) ? n : a), niveles[0]);
+  const ext = niveles[0].exterior;
+  const huellas = niveles.map((n) => ({
+    polys: (n.zocalo ?? []).map((p) => p[0]),
+    fondo: ext ? ext.nivel : (n.z ?? 0) - (n.placa?.grosor ?? 0.3),
+    exacto: n === bajo,
+  }));
+  const exterior = ext ? [...ext.deck, ...ext.pasos, ...ext.borde, ...ext.hueco].map((p) => p[0]) : [];
+  const huella = Math.max(...huellas.map((h) => h.polys.reduce((a, p) => a + areaPoly(p), 0)));
+  return { huellas, exterior, hueco: ext ? ext.hueco.map((p) => p[0]) : [], nivelExt: ext?.nivel ?? 0, huella };
+}
+
+function terrenoLote(rel, lote, phi, dh) {
+  const { nx, ny, paso, x0, y1 } = rel;
+  const n = nx * ny, z = new Float32Array(n), fijo = new Float32Array(n).fill(NaN), fuera = new Uint8Array(n);
+  const R = 4;
+  for (let i = 0; i < ny; i++) for (let j = 0; j < nx; j++) {
+    const k = i * nx + j, p = [x0 + j * paso, y1 - i * paso], h = aCasa(p, phi);
+    z[k] = rel.z[k] - rel.cota0;
+    for (const hu of dh.huellas) {
+      if (!hu.polys.some((q) => dentroDe(h, q))) continue;
+      if (hu.exacto) fijo[k] = hu.fondo;                      // plataforma: corte y relleno
+      else fijo[k] = Math.min(isNaN(fijo[k]) ? z[k] : fijo[k], z[k], hu.fondo);   // voladizo: solo corte
+    }
+    if (dh.exterior.some((q) => dentroDe(h, q))) fijo[k] = dh.nivelExt;
+    if (dh.hueco.some((q) => dentroDe(h, q))) fuera[k] = 1;
+  }
+  /* distancia a la plataforma (chaflán en dos pasadas) y su cota más cercana */
+  const d = new Float32Array(n).fill(1e9), cota = new Float32Array(n);
+  for (let k = 0; k < n; k++) if (!isNaN(fijo[k])) { d[k] = 0; cota[k] = fijo[k]; }
+  const pasar = (orden) => {
+    for (const k of orden) {
+      const i = Math.floor(k / nx), j = k % nx;
+      for (const [di, dj, c] of [[-1, 0, 1], [0, -1, 1], [-1, -1, 1.41], [-1, 1, 1.41], [1, 0, 1], [0, 1, 1], [1, 1, 1.41], [1, -1, 1.41]]) {
+        const ii = i + di, jj = j + dj;
+        if (ii < 0 || jj < 0 || ii >= ny || jj >= nx) continue;
+        const kk = ii * nx + jj, dd = d[kk] + c * paso;
+        if (dd < d[k]) { d[k] = dd; cota[k] = cota[kk]; }
+      }
+    }
+  };
+  const orden = [...Array(n).keys()];
+  pasar(orden); pasar(orden.reverse());
+  for (let k = 0; k < n; k++) {
+    if (!isNaN(fijo[k])) z[k] = fijo[k];
+    else if (d[k] < R) { const w = d[k] / R, s = w * w * (3 - 2 * w); z[k] = cota[k] * (1 - s) + z[k] * s; }
+  }
+
+  /* malla: el lote más claro que lo de alrededor; sin triángulos en la piscina */
+  const pos = new Float32Array(n * 3), uv = new Float32Array(n * 2), col = new Float32Array(n * 3);
+  for (let i = 0; i < ny; i++) for (let j = 0; j < nx; j++) {
+    const k = i * nx + j, x = x0 + j * paso, y = y1 - i * paso;
+    pos.set([x, z[k], -y], k * 3);
+    uv.set([x / 7, y / 7], k * 2);
+    const c = dentroDe([x, y], lote.poly) ? 1 : 0.62;
+    col.set([c, c, c], k * 3);
+  }
+  const idx = [];
+  for (let i = 0; i < ny - 1; i++) for (let j = 0; j < nx - 1; j++) {
+    const a = i * nx + j, b = a + 1, c = a + nx, e = c + 1;
+    if (fuera[a] + fuera[b] + fuera[c] + fuera[e] >= 2) continue;
+    idx.push(a, c, b, b, c, e);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  g.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+  g.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+
+  const alturaEn = (x, y) => {
+    const fj = (x - x0) / paso, fi = (y1 - y) / paso;
+    const j = Math.min(Math.max(Math.floor(fj), 0), nx - 2), i = Math.min(Math.max(Math.floor(fi), 0), ny - 2);
+    const u = fj - j, v = fi - i, k = i * nx + j;
+    return z[k] * (1 - u) * (1 - v) + z[k + 1] * u * (1 - v) + z[k + nx] * (1 - u) * v + z[k + nx + 1] * u * v;
+  };
+  return { g, alturaEn };
+}
+
+/* lindero del lote: una cinta que sigue el terreno */
+function geometriaLindero(poly, alturaEn) {
+  const pos = [], ancho = 0.14;
+  for (let i = 0; i < poly.length - 1; i++) {
+    const [ax, ay] = poly[i], [bx, by] = poly[i + 1];
+    const l = Math.hypot(bx - ax, by - ay), nxv = -(by - ay) / l * ancho, nyv = (bx - ax) / l * ancho;
+    const pasos = Math.max(1, Math.ceil(l / 0.5));
+    for (let k = 0; k < pasos; k++) {
+      const t0 = k / pasos, t1 = (k + 1) / pasos;
+      const p0 = [ax + (bx - ax) * t0, ay + (by - ay) * t0], p1 = [ax + (bx - ax) * t1, ay + (by - ay) * t1];
+      const v = (p, s) => [p[0] + nxv * s, alturaEn(p[0], p[1]) + 0.07, -(p[1] + nyv * s)];
+      const [a, b, c, d] = [v(p0, -1), v(p1, -1), v(p1, 1), v(p0, 1)];
+      pos.push(...a, ...b, ...c, ...a, ...c, ...d);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+}
+
+/* borde de piedra alrededor del hueco de la piscina: tapa el corte dentado
+   de la malla del terreno */
+function geometriaCollar(hueco, nivel) {
+  const partes = hueco.map((p) => {
+    const sh = new THREE.Shape(p.map(([x, y]) => new THREE.Vector2(x, -y)));
+    const xs = p.map((q) => q[0]), ys = p.map((q) => -q[1]);
+    const m = 0.45;
+    const exterior = new THREE.Shape([
+      new THREE.Vector2(Math.min(...xs) - m, Math.min(...ys) - m), new THREE.Vector2(Math.max(...xs) + m, Math.min(...ys) - m),
+      new THREE.Vector2(Math.max(...xs) + m, Math.max(...ys) + m), new THREE.Vector2(Math.min(...xs) - m, Math.max(...ys) + m)]);
+    exterior.holes.push(new THREE.Path(sh.getPoints()));
+    // entre el borde (+0,03) y el deck (+0,05): no pelea con ninguno
+    const g = new THREE.ExtrudeGeometry(exterior, { depth: 0.04, bevelEnabled: false });
+    g.rotateX(Math.PI / 2);
+    g.translate(0, nivel + 0.04, 0);
+    return g;
+  });
+  return partes.length ? mergeGeometries(partes) : null;
+}
+
 /* caja a lo largo del vano, entre dos alturas */
 function tramo(v, z0, z1, grosor, desplazar = 0) {
   const [ax, az] = aTres(...v.a);
@@ -345,7 +482,7 @@ function geometriaAgua(poly) {
   return g;
 }
 
-export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
+export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)", lote = null, relieve = null, giro = 0, onInfo }) {
   const [hora, setHora] = useState("dia");
   const boxRef = useRef(null);
   const capaRef = useRef(null);
@@ -514,7 +651,7 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
         if (p) techos.push(sombra(new THREE.Mesh(p, matPlaca)));
 
         /* pilotes: columnas del nivel de abajo que bajan hasta el terreno */
-        for (const pl of n.pilotes ?? []) sombra(new THREE.Mesh(extruir([[pl.poly]], pl.z0, pl.z1 - pl.z0), matConcreto));
+        for (const pl of lote ? [] : n.pilotes ?? []) sombra(new THREE.Mesh(extruir([[pl.poly]], pl.z0, pl.z1 - pl.z0), matConcreto));
 
         /* muebles: planta y tamaño del plano; altura estándar */
         const porTipo = {};
@@ -554,17 +691,30 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
       return g;
     });
 
-    /* encuadre a partir del tamaño real de la casa */
+    /* en un lote la casa va en un pivote que la gira sobre su centro */
+    const pivote = new THREE.Group();
+    if (lote) { grupos.forEach((g) => pivote.add(g)); escena.add(pivote); }
+
+    /* encuadre a partir del tamaño real de la casa (o del lote) */
     const caja = new THREE.Box3().setFromObject(escena);
     const centro = caja.getCenter(new THREE.Vector3());
     const tam = caja.getSize(new THREE.Vector3());
-    const radio = Math.max(tam.x, tam.z) * 0.62 + tam.y;
+    let radio = Math.max(tam.x, tam.z) * 0.62 + tam.y;
+    if (lote) {
+      const xs = lote.poly.map((p) => p[0]), ys = lote.poly.map((p) => p[1]);
+      radio = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), radio) * 0.7;
+      centro.set(0, 0, 0);
+    }
 
     /* el terreno: sin él la casa flota en el vacío */
     const ext0 = niveles[0].exterior;
     const ter = niveles.find((n) => n.terreno)?.terreno;
     let pasto;
-    if (ter) {
+    if (lote) {
+      pasto = new THREE.Mesh(new THREE.BufferGeometry(), matPasto);   // se llena con el relieve
+      matPasto.vertexColors = true;
+      for (const t of Object.values(pbr.pasto)) t.repeat.set(1, 1);   // la UV ya va en metros / 7
+    } else if (ter) {
       /* la ladera real, desde las curvas de nivel del plano */
       const { g, ancho, fondo } = geometriaTerreno(ter);
       pasto = new THREE.Mesh(g, matPasto);
@@ -591,7 +741,7 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
     pasto.receiveShadow = true;
     escena.add(pasto);
 
-    let arboles = niveles.find((n) => n.arboles)?.arboles;
+    let arboles = lote ? [] : niveles.find((n) => n.arboles)?.arboles;
     if (!arboles) {
       /* El plano no trae árboles (El Manzano): ambientación de fondo, lejos
          de la casa y hacia atrás, como en el render. No es paisajismo del
@@ -718,7 +868,7 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
       const candidatas = [];
       for (const t of etiquetas) {
         if (!grupos[t.nivelIdx].visible || (techos.length && estado.opacidad > 0.5)) { t.el.style.display = "none"; continue; }
-        v.copy(t.v).project(camara);
+        v.copy(t.v).applyMatrix4(pivote.matrixWorld).project(camara);
         if (v.z >= 1 || Math.abs(v.x) > 1 || Math.abs(v.y) > 1) { t.el.style.display = "none"; continue; }
         candidatas.push({ t, x: (v.x * 0.5 + 0.5) * w, y: (-v.y * 0.5 + 0.5) * h, z: v.z });
       }
@@ -751,7 +901,28 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
       matPasto.color.set(a.pasto);
     };
 
-    escenaRef.current = { grupos, ctrl, aplicarHora, estado };
+    const matLindero = new THREE.MeshBasicMaterial({ color: 0xE5BC8B, side: THREE.DoubleSide });
+    const lindero = new THREE.Mesh(new THREE.BufferGeometry(), matLindero);
+    const collar = new THREE.Mesh(new THREE.BufferGeometry(), matPiedra);
+    collar.receiveShadow = true;
+    if (lote) { escena.add(lindero); pivote.add(collar); }
+    const dh = lote ? datosHuella(niveles) : null;
+    /* `grados`: giro elegido por el usuario sobre la orientación sugerida */
+    const montarLote = (rel, grados) => {
+      if (!lote || !rel) return;
+      const phi = rel.bajada + Math.PI / 2 + (grados * Math.PI) / 180;   // el frente de la casa (sur del plano) mira a la bajada
+      pivote.rotation.y = phi;
+      const t = terrenoLote(rel, lote, phi, dh);
+      pasto.geometry.dispose(); pasto.geometry = t.g;
+      lindero.geometry.dispose(); lindero.geometry = geometriaLindero(lote.poly, t.alturaEn);
+      const c = dh.hueco.length ? geometriaCollar(dh.hueco, dh.nivelExt) : null;
+      collar.geometry.dispose(); collar.geometry = c ?? new THREE.BufferGeometry();
+      const puntos = [...dh.huellas.flatMap((h) => h.polys), ...dh.exterior].flat();
+      const cabe = puntos.every((p) => dentroDe(aLote(p, phi), lote.poly));
+      onInfo?.({ cabe, huella: dh.huella, pct: (dh.huella / lote.area) * 100, pendiente: rel.pendiente * 100 });
+    };
+
+    escenaRef.current = { grupos, ctrl, aplicarHora, estado, montarLote };
     if (import.meta.env.DEV) window.__casa3d = { escena, grupos, pisos, camara, render, ctrl, ajustarTecho, compositor };
     setListo(true);
 
@@ -762,6 +933,7 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
       render.domElement.removeEventListener("wheel", parar);
       ctrl.dispose();
       compositor.dispose();
+      matLindero.dispose();
       matTronco.dispose(); matCopas.forEach((m) => m.dispose());
       render.dispose();
       cielo?.dispose(); fondo?.dispose();
@@ -781,7 +953,12 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)" }) {
     };
     // niveles se deriva de `modelo`, que es la dependencia real
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modelo]);
+  }, [modelo, lote]);
+
+  /* relieve o giro nuevos: se vuelve a asentar la casa en el lote */
+  useEffect(() => {
+    escenaRef.current?.montarLote(relieve, giro);
+  }, [relieve, giro, listo]);
 
   /* día o atardecer */
   useEffect(() => {
