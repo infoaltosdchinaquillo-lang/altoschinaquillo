@@ -1,6 +1,6 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, lazy, Suspense } from "react";
 import { wa, cop, GALLERY, PLAN, planPago, proyectar, quedanEnRango, TERRENO, VALORIZACION_NOTA } from "../data";
-import { IconWa, IconCheck, IconClose, IconExpand, Dot, Lightbox, useLockScroll } from "./ui";
+import { IconWa, IconCheck, IconClose, IconExpand, Dot, Lightbox, useLockScroll, useDialogo } from "./ui";
 
 /* three.js pesa: el visor se carga solo si alguien abre la pestaña */
 const CasaEnLote = lazy(() => import("./CasaEnLote"));
@@ -20,12 +20,7 @@ export default function LotModal({ lot, onClose, onCompare, inCompare, onVerEnMa
   const [anios, setAnios] = useState(5);
 
   useLockScroll(true);
-
-  useEffect(() => {
-    const k = (e) => e.key === "Escape" && !lightbox && onClose();
-    window.addEventListener("keydown", k);
-    return () => window.removeEventListener("keydown", k);
-  }, [onClose, lightbox]);
+  const panel = useDialogo(onClose);
 
   if (!lot) return null;
 
@@ -39,16 +34,17 @@ export default function LotModal({ lot, onClose, onCompare, inCompare, onVerEnMa
 
   return (
     <>
-      <div onClick={onClose}
+      <div role="presentation" onClick={onClose}
         style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 18 }}>
         <div style={{ position: "absolute", inset: 0, background: "rgba(6,5,4,0.84)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", animation: "fadeIn 0.35s ease" }} />
 
-        <div onClick={(e) => e.stopPropagation()} className="glass-panel"
-          style={{ position: "relative", width: "100%", maxWidth: 960, maxHeight: "92vh", display: "flex", flexDirection: "column",
+        <div ref={panel} role="dialog" aria-modal="true" aria-label={`Lote ${lot.name}`} tabIndex={-1}
+          onClick={(e) => e.stopPropagation()} className="glass-panel"
+          style={{ position: "relative", width: "100%", maxWidth: 960, maxHeight: "92dvh", display: "flex", flexDirection: "column",
             animation: "modalIn 0.55s cubic-bezier(0.16,1,0.3,1)" }}>
 
           <button onClick={onClose} aria-label="Cerrar" className="glass-pill"
-            style={{ position: "absolute", top: 18, right: 18, zIndex: 12, width: 42, height: 42, color: "#E8DFD3",
+            style={{ position: "absolute", top: 18, right: 18, zIndex: 12, width: 42, height: 42, color: "var(--texto)",
               cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
             <IconClose s={16} />
           </button>
@@ -61,12 +57,12 @@ export default function LotModal({ lot, onClose, onCompare, inCompare, onVerEnMa
 
               <div className="glass-pill" style={{ position: "absolute", top: 20, left: 22, display: "flex", alignItems: "center", gap: 9, padding: "8px 16px" }}>
                 <Dot />
-                <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "0.2em", textTransform: "uppercase", color: "#9DC47A" }}>Disponible</span>
+                <span style={{ fontSize: 11.5, fontWeight: 600, letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--verde)" }}>Disponible</span>
               </div>
 
               <button onClick={() => setLightbox(true)} className="glass-pill"
                 style={{ position: "absolute", top: 20, right: 70, padding: "9px 16px", display: "flex", alignItems: "center", gap: 8,
-                  color: "#E8DFD3", cursor: "pointer", fontSize: 12.5 }}>
+                  color: "var(--texto)", cursor: "pointer", fontSize: 12.5 }}>
                 <IconExpand s={14} /> Ampliar
               </button>
 
@@ -74,7 +70,7 @@ export default function LotModal({ lot, onClose, onCompare, inCompare, onVerEnMa
                 {GALLERY.map((g, i) => (
                   <button key={i} onClick={() => setImg(i)}
                     style={{ width: 54, height: 38, padding: 0, cursor: "pointer", overflow: "hidden", borderRadius: 10, background: "none",
-                      border: i === img ? "1.5px solid #C99A63" : "1.5px solid rgba(255,255,255,0.2)",
+                      border: i === img ? "1.5px solid var(--oro)" : "1.5px solid rgba(255,255,255,0.2)",
                       opacity: i === img ? 1 : 0.5,
                       boxShadow: i === img ? "0 0 18px -4px rgba(201,154,99,0.6)" : "none",
                       transition: "all 0.45s cubic-bezier(0.16,1,0.3,1)" }}>
@@ -83,7 +79,7 @@ export default function LotModal({ lot, onClose, onCompare, inCompare, onVerEnMa
                 ))}
                 {/* Placeholder 360 */}
                 <div style={{ width: 54, height: 38, borderRadius: 10, border: "1.5px dashed rgba(255,255,255,0.22)",
-                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9.5, color: "#857B6D", letterSpacing: "0.05em" }}>
+                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11.5, color: "var(--texto-3)", letterSpacing: "0.05em" }}>
                   360°
                 </div>
               </div>
@@ -99,7 +95,7 @@ export default function LotModal({ lot, onClose, onCompare, inCompare, onVerEnMa
                   </p>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                  <div className="meta" style={{ fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase" }}>Precio</div>
+                  <div className="meta" style={{ fontSize: 11.5, letterSpacing: "0.18em", textTransform: "uppercase" }}>Precio</div>
                   <div className="num gold" style={{ fontSize: 30, marginTop: 6 }}>{cop(price)}</div>
                 </div>
               </div>
@@ -108,19 +104,21 @@ export default function LotModal({ lot, onClose, onCompare, inCompare, onVerEnMa
               {quedan <= 5 && (
                 <div className="glass-gold" style={{ marginTop: 22, padding: "13px 20px", display: "flex", alignItems: "center", gap: 11, borderRadius: 14 }}>
                   <Dot color="#D9AE7B" />
-                  <span style={{ fontSize: 13.5, color: "#D9AE7B" }}>
+                  <span style={{ fontSize: 13.5, color: "var(--oro-texto)" }}>
                     Quedan solo <strong>{quedan} lote{quedan !== 1 ? "s" : ""}</strong> en este rango de precio
                   </span>
                 </div>
               )}
 
               {/* Tabs */}
-              <div className="glass-pill" style={{ display: "inline-flex", padding: 5, gap: 3, marginTop: 26 }}>
+              {/* en celular las 4 pestañas no caben: la fila se desliza, sin partir el texto */}
+              <div className="glass-pill" role="tablist" aria-label="Información del lote"
+                style={{ display: "inline-flex", maxWidth: "100%", overflowX: "auto", scrollbarWidth: "none", padding: 5, gap: 3, marginTop: 26 }}>
                 {TABS.map((t) => (
-                  <button key={t.k} onClick={() => setTab(t.k)}
-                    style={{ padding: "10px 20px", fontSize: 13, fontWeight: 500, cursor: "pointer", border: "none", borderRadius: 999,
-                      background: tab === t.k ? "linear-gradient(150deg,#E5BC8B,#C99A63)" : "transparent",
-                      color: tab === t.k ? "#17110B" : "#8B8173",
+                  <button key={t.k} onClick={() => setTab(t.k)} role="tab" aria-selected={tab === t.k}
+                    style={{ padding: "10px 18px", fontSize: 13, whiteSpace: "nowrap", flexShrink: 0, fontWeight: 500, cursor: "pointer", border: "none", borderRadius: 999,
+                      background: tab === t.k ? "var(--grad-oro)" : "transparent",
+                      color: tab === t.k ? "var(--tinta)" : "var(--texto-3)",
                       boxShadow: tab === t.k ? "inset 0 1px 0 rgba(255,255,255,0.35)" : "none",
                       transition: "all 0.4s cubic-bezier(0.16,1,0.3,1)" }}>
                     {t.l}
@@ -135,17 +133,17 @@ export default function LotModal({ lot, onClose, onCompare, inCompare, onVerEnMa
               {tab === "info" && (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 30, animation: "fadeIn 0.35s ease" }}>
                   <div>
-                    <div className="eyebrow" style={{ fontSize: 10.5, marginBottom: 18 }}>El lote incluye</div>
+                    <div className="eyebrow" style={{ fontSize: 11.5, marginBottom: 18 }}>El lote incluye</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                       {["Agua potable y energía eléctrica", "Alcantarillado conectado", "Vía de acceso vehicular", "Escritura pública individual", "Licencia de urbanismo vigente"].map((t, i) => (
-                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 13, fontSize: 15, color: "#A29686" }}>
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 13, fontSize: 15, color: "var(--texto-2)" }}>
                           <IconCheck /> {t}
                         </div>
                       ))}
                     </div>
                   </div>
                   <div>
-                    <div className="eyebrow" style={{ fontSize: 10.5, marginBottom: 18 }}>Ficha técnica</div>
+                    <div className="eyebrow" style={{ fontSize: 11.5, marginBottom: 18 }}>Ficha técnica</div>
                     <div style={{ display: "flex", flexDirection: "column" }}>
                       {[
                         ["Área", `${lot.area.toLocaleString()} m²`],
@@ -157,14 +155,14 @@ export default function LotModal({ lot, onClose, onCompare, inCompare, onVerEnMa
                       ].map(([k, v], i) => (
                         <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                           <span className="meta">{k}</span>
-                          <span style={{ fontSize: 14.5, color: "#E8DFD3" }}>{v}</span>
+                          <span style={{ fontSize: 14.5, color: "var(--texto)" }}>{v}</span>
                         </div>
                       ))}
                     </div>
 
                     {TERRENO[lot.terreno] && (
                       <p className="meta" style={{ marginTop: 16, fontSize: 12.5, lineHeight: 1.65 }}>
-                        <span style={{ color: "#D9AE7B" }}>{TERRENO[lot.terreno].titulo}.</span>{" "}
+                        <span style={{ color: "var(--oro-texto)" }}>{TERRENO[lot.terreno].titulo}.</span>{" "}
                         {TERRENO[lot.terreno].nota}
                       </p>
                     )}
@@ -186,17 +184,17 @@ export default function LotModal({ lot, onClose, onCompare, inCompare, onVerEnMa
                     <span className="num gold" style={{ fontSize: 26 }}>{mo} meses</span>
                   </div>
                   <input type="range" min={6} max={PLAN.mesesMax} value={mo} onChange={(e) => setMo(+e.target.value)} />
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#6F675B" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--texto-3)" }}>
                     <span>6 meses</span><span>{PLAN.mesesMax} meses</span>
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginTop: 30 }}>
                     <div className="glass" style={{ padding: "22px 24px", borderRadius: 18 }}>
-                      <div className="meta" style={{ fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 10 }}>Inicial {PLAN.inicialPct}%</div>
+                      <div className="meta" style={{ fontSize: 11.5, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 10 }}>Inicial {PLAN.inicialPct}%</div>
                       <div className="num" style={{ fontSize: 22, color: "#F2EBE0" }}>{cop(ini)}</div>
                     </div>
                     <div className="glass-gold" style={{ padding: "22px 24px", borderRadius: 18 }}>
-                      <div className="meta" style={{ fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 10, color: "#B99167" }}>Cuota mensual</div>
+                      <div className="meta" style={{ fontSize: 11.5, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 10, color: "#B99167" }}>Cuota mensual</div>
                       <div className="num gold" style={{ fontSize: 22 }}>{cop(cuota)}</div>
                     </div>
                   </div>
@@ -214,7 +212,7 @@ export default function LotModal({ lot, onClose, onCompare, inCompare, onVerEnMa
                     <span className="num gold" style={{ fontSize: 26 }}>{anios} año{anios !== 1 ? "s" : ""}</span>
                   </div>
                   <input type="range" min={1} max={10} value={anios} onChange={(e) => setAnios(+e.target.value)} />
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#6F675B" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--texto-3)" }}>
                     <span>1 año</span><span>10 años</span>
                   </div>
 
@@ -223,7 +221,7 @@ export default function LotModal({ lot, onClose, onCompare, inCompare, onVerEnMa
                     <div className="num gold" style={{ fontSize: "clamp(32px, 4.5vw, 42px)", marginTop: 12 }}>{cop(futuro)}</div>
                     <div style={{ marginTop: 16, display: "inline-flex", alignItems: "center", gap: 8, padding: "7px 16px", borderRadius: 999, background: "rgba(123,160,91,0.14)", border: "1px solid rgba(123,160,91,0.28)" }}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9DC47A" strokeWidth="2"><path d="M4 18l6-6 4 4 6-8"/><path d="M20 8h-4M20 8v4"/></svg>
-                      <span style={{ fontSize: 13.5, color: "#9DC47A" }}>+{cop(ganancia)} de valorización</span>
+                      <span style={{ fontSize: 13.5, color: "var(--verde)" }}>+{cop(ganancia)} de valorización</span>
                     </div>
                   </div>
 

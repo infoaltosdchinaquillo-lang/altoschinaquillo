@@ -79,6 +79,49 @@ export function useCount(target, dur = 1900) {
   return [ref, n];
 }
 
+/* ── Ventanas emergentes accesibles ──
+   Al abrirse, el foco del teclado entra a la ventana; Tab no se sale de
+   ella; Escape la cierra; al cerrarse, el foco vuelve a donde estaba.
+   Si hay dos abiertas (la foto ampliada sobre la ficha), manda la de
+   encima. Devuelve el ref para el panel de la ventana. */
+const PILA_DIALOGOS = [];
+const ENFOCABLES = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+export function useDialogo(onClose) {
+  const ref = useRef(null);
+  const cerrar = useRef(onClose);
+  cerrar.current = onClose;
+  useEffect(() => {
+    const previo = document.activeElement;
+    const yo = {};
+    PILA_DIALOGOS.push(yo);
+    const el = ref.current;
+    const lista = () => [...el.querySelectorAll(ENFOCABLES)].filter((e) => e.getClientRects().length > 0);
+    (lista()[0] ?? el).focus({ preventScroll: true });
+    const k = (e) => {
+      if (PILA_DIALOGOS[PILA_DIALOGOS.length - 1] !== yo) return;
+      if (e.key === "Escape") { e.preventDefault(); cerrar.current?.(); return; }
+      if (e.key !== "Tab") return;
+      const l = lista();
+      if (!l.length) { e.preventDefault(); return; }
+      const a = l[0], z = l[l.length - 1];
+      if (!el.contains(document.activeElement)) { e.preventDefault(); a.focus(); }
+      else if (e.shiftKey && document.activeElement === a) { e.preventDefault(); z.focus(); }
+      else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus(); }
+    };
+    document.addEventListener("keydown", k);
+    return () => {
+      document.removeEventListener("keydown", k);
+      PILA_DIALOGOS.splice(PILA_DIALOGOS.indexOf(yo), 1);
+      if (previo?.isConnected) previo.focus({ preventScroll: true });
+    };
+  }, []);
+  return ref;
+}
+
+/* el sistema pide menos movimiento (ajuste de accesibilidad del teléfono) */
+export const menosMovimiento = () =>
+  typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
 export function useLockScroll(active) {
   useEffect(() => {
     document.body.style.overflow = active ? "hidden" : "";
@@ -109,10 +152,10 @@ export function Lightbox({ images, index, onClose, onIndex }) {
   const [pos, setPos] = useState({ x: 50, y: 50 });
 
   useLockScroll(true);
+  const panel = useDialogo(onClose);
 
   useEffect(() => {
     const k = (e) => {
-      if (e.key === "Escape") onClose();
       if (e.key === "ArrowRight") { setZoom(false); onIndex((index + 1) % images.length); }
       if (e.key === "ArrowLeft") { setZoom(false); onIndex((index - 1 + images.length) % images.length); }
     };
@@ -132,23 +175,24 @@ export function Lightbox({ images, index, onClose, onIndex }) {
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", background: "rgba(6,5,4,0.96)", animation: "fadeIn 0.3s ease" }}>
+    <div ref={panel} role="dialog" aria-modal="true" aria-label={img.label || `Imagen ${index + 1}`} tabIndex={-1}
+      style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", background: "rgba(6,5,4,0.96)", animation: "fadeIn 0.3s ease" }}>
       {/* Top bar */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 22px", flexShrink: 0 }}>
         <div>
-          <div className="eyebrow" style={{ fontSize: 10.5 }}>{img.label || `Imagen ${index + 1}`}</div>
+          <div className="eyebrow" style={{ fontSize: 11.5 }}>{img.label || `Imagen ${index + 1}`}</div>
           <div className="meta" style={{ marginTop: 5 }}>{index + 1} / {images.length}</div>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <button onClick={() => setZoom(!zoom)} className="glass-pill"
-            style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", color: zoom ? "#D9AE7B" : "#E8DFD3", cursor: "pointer", padding: 0 }}
-            aria-label="Zoom">
+            style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", color: zoom ? "var(--oro-texto)" : "var(--texto)", cursor: "pointer", padding: 0 }}
+            aria-label={zoom ? "Reducir la imagen" : "Ampliar la imagen"} aria-pressed={zoom}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
               <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>{!zoom && <path d="M11 8v6M8 11h6"/>}{zoom && <path d="M8 11h6"/>}
             </svg>
           </button>
           <button onClick={onClose} className="glass-pill"
-            style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", color: "#E8DFD3", cursor: "pointer", padding: 0 }}
+            style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--texto)", cursor: "pointer", padding: 0 }}
             aria-label="Cerrar">
             <IconClose s={16} />
           </button>
@@ -159,13 +203,13 @@ export function Lightbox({ images, index, onClose, onIndex }) {
       <div style={{ flex: 1, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 12px", minHeight: 0 }}>
         {images.length > 1 && (
           <button onClick={() => { setZoom(false); onIndex((index - 1 + images.length) % images.length); }} className="glass-pill"
-            style={{ position: "absolute", left: 18, zIndex: 5, width: 48, height: 48, display: "flex", alignItems: "center", justifyContent: "center", color: "#E8DFD3", cursor: "pointer", padding: 0 }}
+            style={{ position: "absolute", left: 18, zIndex: 5, width: 48, height: 48, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--texto)", cursor: "pointer", padding: 0 }}
             aria-label="Anterior">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><path d="M15 6l-6 6 6 6"/></svg>
           </button>
         )}
 
-        <div onClick={() => setZoom(!zoom)} onMouseMove={move}
+        <div role="presentation" onClick={() => setZoom(!zoom)} onMouseMove={move}
           style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", cursor: zoom ? "zoom-out" : "zoom-in", overflow: "hidden" }}>
           <img src={img.src} alt={img.alt || img.label}
             style={{
@@ -182,7 +226,7 @@ export function Lightbox({ images, index, onClose, onIndex }) {
 
         {images.length > 1 && (
           <button onClick={() => { setZoom(false); onIndex((index + 1) % images.length); }} className="glass-pill"
-            style={{ position: "absolute", right: 18, zIndex: 5, width: 48, height: 48, display: "flex", alignItems: "center", justifyContent: "center", color: "#E8DFD3", cursor: "pointer", padding: 0 }}
+            style={{ position: "absolute", right: 18, zIndex: 5, width: 48, height: 48, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--texto)", cursor: "pointer", padding: 0 }}
             aria-label="Siguiente">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><path d="M9 6l6 6-6 6"/></svg>
           </button>
@@ -197,7 +241,7 @@ export function Lightbox({ images, index, onClose, onIndex }) {
             {images.map((im, i) => (
               <button key={i} onClick={() => { setZoom(false); onIndex(i); }}
                 style={{ width: 74, height: 52, padding: 0, cursor: "pointer", overflow: "hidden", borderRadius: 10, background: "none",
-                  border: i === index ? "1.5px solid #C99A63" : "1px solid rgba(255,255,255,0.14)",
+                  border: i === index ? "1.5px solid var(--oro)" : "1px solid rgba(255,255,255,0.14)",
                   opacity: i === index ? 1 : 0.45,
                   boxShadow: i === index ? "0 0 20px -5px rgba(201,154,99,0.7)" : "none",
                   transition: "all 0.45s cubic-bezier(0.16,1,0.3,1)" }}>

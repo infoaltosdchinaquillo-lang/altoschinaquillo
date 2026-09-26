@@ -125,7 +125,7 @@ export default function Financiacion() {
                     <span className="num gold" style={{ fontSize: 24 }}>{inicialPct}%</span>
                   </div>
                   <input type="range" min={PLAN.inicialMin} max={50} step={5} value={inicialPct} onChange={(e) => setInicialPct(+e.target.value)} />
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#6F675B" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--texto-3)" }}>
                     <span>{PLAN.inicialMin}% mínimo</span><span>50%</span>
                   </div>
                   <p className="meta" style={{ marginTop: 8, fontSize: 12.5 }}>{cop(ini)} para separar</p>
@@ -138,7 +138,7 @@ export default function Financiacion() {
                     <span className="num gold" style={{ fontSize: 24 }}>{mo} meses</span>
                   </div>
                   <input type="range" min={6} max={PLAN.mesesMax} value={mo} onChange={(e) => setMo(+e.target.value)} />
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#6F675B" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--texto-3)" }}>
                     <span>6 meses</span><span>{PLAN.mesesMax} meses</span>
                   </div>
                 </div>
@@ -148,8 +148,8 @@ export default function Financiacion() {
                   {["mensual", "trimestral"].map((t) => (
                     <button key={t} onClick={() => setTipo(t)}
                       style={{ flex: 1, padding: "12px", fontSize: 13, fontWeight: 500, cursor: "pointer", border: "none", borderRadius: 999,
-                        background: tipo === t ? "linear-gradient(150deg,#E5BC8B,#C99A63)" : "transparent",
-                        color: tipo === t ? "#17110B" : "#8B8173",
+                        background: tipo === t ? "var(--grad-oro)" : "transparent",
+                        color: tipo === t ? "var(--tinta)" : "var(--texto-3)",
                         boxShadow: tipo === t ? "inset 0 1px 0 rgba(255,255,255,0.35)" : "none",
                         transition: "all 0.45s cubic-bezier(0.16,1,0.3,1)" }}>
                       {t === "mensual" ? "Cuotas mensuales" : "Cuotas trimestrales"}
@@ -163,7 +163,7 @@ export default function Financiacion() {
                     textAlign: "left", display: "flex", alignItems: "center", gap: 14,
                     border: extras ? "1px solid rgba(201,154,99,0.55)" : "1px solid rgba(255,255,255,0.08)" }}>
                   <span style={{ width: 20, height: 20, borderRadius: 6, flexShrink: 0,
-                    background: extras ? "linear-gradient(150deg,#E5BC8B,#C99A63)" : "rgba(255,255,255,0.06)",
+                    background: extras ? "var(--grad-oro)" : "rgba(255,255,255,0.06)",
                     display: "flex", alignItems: "center", justifyContent: "center" }}>
                     {extras && (
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#17110B" strokeWidth="3.4">
@@ -172,7 +172,7 @@ export default function Financiacion() {
                     )}
                   </span>
                   <span>
-                    <span style={{ fontSize: 14, color: "#E8DFD3" }}>Pagar con las primas</span>
+                    <span style={{ fontSize: 14, color: "var(--texto)" }}>Pagar con las primas</span>
                     <span className="meta" style={{ display: "block", fontSize: 12.5, marginTop: 3 }}>
                       {plan.nExtra > 0
                         ? `${plan.nExtra} cuota${plan.nExtra !== 1 ? "s" : ""} extraordinaria${plan.nExtra !== 1 ? "s" : ""} de ${cop(plan.valorExtra)} en junio y diciembre`
@@ -203,7 +203,7 @@ export default function Financiacion() {
                   ].map(([k, v], i) => (
                     <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 14, padding: "14px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                       <span className="meta">{k}</span>
-                      <span style={{ fontSize: 14.5, color: i === 4 ? "#D9AE7B" : "#E8DFD3", textAlign: "right" }}>{v}</span>
+                      <span style={{ fontSize: 14.5, color: i === 4 ? "var(--oro-texto)" : "var(--texto)", textAlign: "right" }}>{v}</span>
                     </div>
                   ))}
                 </div>
@@ -231,7 +231,7 @@ export default function Financiacion() {
               </p>
               <div style={{ marginTop: 30, display: "flex", flexDirection: "column", gap: 14 }}>
                 {["No se deprecia como un vehículo", "No requiere mantenimiento mensual", "Puedes construir o revender cuando quieras", "Respaldado por escritura pública"].map((t, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 13, fontSize: 15, color: "#A29686" }}>
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 13, fontSize: 15, color: "var(--texto-2)" }}>
                     <IconCheck /> {t}
                   </div>
                 ))}
@@ -247,7 +247,7 @@ export default function Financiacion() {
                 <span className="num gold" style={{ fontSize: 26 }}>{anios} año{anios !== 1 ? "s" : ""}</span>
               </div>
               <input type="range" min={1} max={10} value={anios} onChange={(e) => setAnios(+e.target.value)} />
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#6F675B" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--texto-3)" }}>
                 <span>1 año</span><span>10 años</span>
               </div>
 
@@ -257,7 +257,7 @@ export default function Financiacion() {
                 <div style={{ marginTop: 16, display: "inline-flex", alignItems: "center", gap: 8, padding: "7px 16px", borderRadius: 999,
                   background: "rgba(123,160,91,0.14)", border: "1px solid rgba(123,160,91,0.28)" }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9DC47A" strokeWidth="2"><path d="M4 18l6-6 4 4 6-8"/><path d="M20 8h-4M20 8v4"/></svg>
-                  <span style={{ fontSize: 13.5, color: "#9DC47A" }}>+{cop(futuro - price)}</span>
+                  <span style={{ fontSize: 13.5, color: "var(--verde)" }}>+{cop(futuro - price)}</span>
                 </div>
               </div>
 
@@ -318,7 +318,7 @@ export default function Financiacion() {
                   <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: "6px 14px" }}>
                     {c.tels.map((t) => (
                       <a key={t.n} href={`tel:${t.n}`} className="meta"
-                        style={{ fontSize: 12.5, color: "#A29686" }}>{t.l}</a>
+                        style={{ fontSize: 12.5, color: "var(--texto-2)" }}>{t.l}</a>
                     ))}
                   </div>
                 )}
@@ -362,8 +362,8 @@ export default function Financiacion() {
                 <button onClick={() => setOpenFaq(openFaq === i ? null : i)}
                   style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 20,
                     padding: "24px 0", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}>
-                  <span style={{ fontSize: 17, color: openFaq === i ? "#D9AE7B" : "#E8DFD3", fontWeight: 500, transition: "color 0.35s" }}>{f.q}</span>
-                  <span style={{ color: "#857B6D", flexShrink: 0, transform: openFaq === i ? "rotate(45deg)" : "none", transition: "transform 0.4s cubic-bezier(0.16,1,0.3,1)", fontSize: 22, lineHeight: 1 }}>+</span>
+                  <span style={{ fontSize: 17, color: openFaq === i ? "var(--oro-texto)" : "var(--texto)", fontWeight: 500, transition: "color 0.35s" }}>{f.q}</span>
+                  <span style={{ color: "var(--texto-3)", flexShrink: 0, transform: openFaq === i ? "rotate(45deg)" : "none", transition: "transform 0.4s cubic-bezier(0.16,1,0.3,1)", fontSize: 22, lineHeight: 1 }}>+</span>
                 </button>
                 {openFaq === i && (
                   <p className="body" style={{ paddingBottom: 24, maxWidth: 640, animation: "fadeIn 0.35s ease" }}>{f.a}</p>

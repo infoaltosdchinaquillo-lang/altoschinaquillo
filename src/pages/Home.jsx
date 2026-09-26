@@ -62,7 +62,7 @@ export default function Home() {
             ].map((s, i) => (
               <div key={i}>
                 <div className={`num ${s.gold ? "gold" : ""}`} style={{ fontSize: "clamp(36px, 4.2vw, 52px)", color: s.gold ? undefined : "#F2EBE0" }}>{s.v}</div>
-                <div style={{ fontSize: 13, color: "#8B8173", marginTop: 13, letterSpacing: "0.05em" }}>{s.l}</div>
+                <div style={{ fontSize: 13, color: "var(--texto-3)", marginTop: 13, letterSpacing: "0.05em" }}>{s.l}</div>
               </div>
             ))}
           </div>
@@ -78,7 +78,7 @@ export default function Home() {
                 style={{ position: "relative", aspectRatio: "16/10", padding: 0, width: "100%", cursor: "zoom-in", display: "block", border: "1px solid rgba(255,255,255,0.075)" }}>
                 <img src={PROMO_IMAGES[promoIdx].src} alt={PROMO_IMAGES[promoIdx].label}
                   style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                <span className="glass-pill" style={{ position: "absolute", bottom: 14, right: 14, padding: "9px 16px", display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "#E8DFD3" }}>
+                <span className="glass-pill" style={{ position: "absolute", bottom: 14, right: 14, padding: "9px 16px", display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--texto)" }}>
                   <IconExpand s={14} /> Ver en grande
                 </span>
               </button>
@@ -94,7 +94,7 @@ export default function Home() {
                     <img src={p.src} alt={p.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     <span style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "18px 8px 8px",
                       background: "linear-gradient(180deg, transparent, rgba(11,9,8,0.9))",
-                      fontSize: 10, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "#E8DFD3" }}>
+                      fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--texto)" }}>
                       {p.label}
                     </span>
                   </button>
@@ -105,7 +105,7 @@ export default function Home() {
             <div>
               <div className="glass-gold" style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "9px 20px", borderRadius: 999, marginBottom: 26 }}>
                 <Dot color="#D9AE7B" />
-                <span className="eyebrow" style={{ fontSize: 10.5 }}>Tres modelos · desde ${PRECIO_CASA_MIN}M</span>
+                <span className="eyebrow" style={{ fontSize: 11.5 }}>Tres modelos · desde ${PRECIO_CASA_MIN}M</span>
               </div>
 
               <h2 className="h2">Casa + Lote<br /><span className="serif-em">lista para vivir</span></h2>
@@ -119,7 +119,7 @@ export default function Home() {
                 {CASA_SPECS.map((s, i) => (
                   <div key={i}>
                     <div className="num gold" style={{ fontSize: 31 }}>{s.n}</div>
-                    <div style={{ fontSize: 14, color: "#8B8173", marginTop: 9 }}>{s.u}</div>
+                    <div style={{ fontSize: 14, color: "var(--texto-3)", marginTop: 9 }}>{s.u}</div>
                   </div>
                 ))}
               </div>
@@ -157,7 +157,7 @@ export default function Home() {
             ].map((s, i) => (
               <div key={i} className="glass glass-hover" style={{ padding: "34px 28px" }}>
                 <div className="num gold" style={{ fontSize: 33 }}>{s.v}</div>
-                <div style={{ fontSize: 14, color: "#8B8173", marginTop: 13 }}>{s.l}</div>
+                <div style={{ fontSize: 14, color: "var(--texto-3)", marginTop: 13 }}>{s.l}</div>
               </div>
             ))}
           </div>

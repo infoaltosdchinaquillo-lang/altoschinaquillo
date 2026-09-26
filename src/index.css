@@ -8,6 +8,23 @@
   --color-sand: #E8DFD3;
 }
 
+/* ── Paleta de la marca ──
+   Una sola fuente para los colores que se repiten en los componentes:
+   si cambia un tono, se cambia aquí. (Los colores del mapa y de la maqueta
+   3D van aparte: MapLibre y three.js no leen variables de CSS.) */
+:root {
+  --fondo: #0B0908;
+  --texto: #E8DFD3;         /* texto principal */
+  --texto-2: #A29686;       /* texto secundario */
+  --texto-3: #8B8173;       /* notas y rótulos: 5,2:1 sobre el fondo */
+  --oro: #C99A63;
+  --oro-claro: #E5BC8B;
+  --oro-texto: #D9AE7B;
+  --tinta: #17110B;         /* texto sobre botón dorado */
+  --verde: #9DC47A;
+  --grad-oro: linear-gradient(150deg, #E5BC8B, #C99A63);
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 
@@ -439,7 +456,7 @@ img { display: block; max-width: 100%; }
 .pop-meta { font-size: 11.5px; color: #A29686; margin-top: 4px; }
 .pop-sep { margin: 0 6px; opacity: 0.5; }
 .pop-price { font-family: var(--font-display); font-size: 15px; color: #D9AE7B; margin-top: 5px; }
-.pop-sold { font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: #857B6D; margin-top: 5px; }
+.pop-sold { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: #857B6D; margin-top: 5px; }
 
 /* etiquetas de los ambientes en la maqueta 3D */
 .casa3d-tag {
@@ -495,4 +512,45 @@ img { display: block; max-width: 100%; }
 @media (max-width: 900px) {
   .nav-desktop { display: none !important; }
   .nav-mobile { display: flex !important; }
+}
+
+/* ══════════════════════════════════════════════════
+   ACCESIBILIDAD Y CELULAR
+   ══════════════════════════════════════════════════ */
+
+/* Dónde está el teclado: solo al navegar con teclado, no al tocar o hacer clic */
+:focus-visible {
+  outline: 2px solid var(--oro-claro);
+  outline-offset: 3px;
+}
+.lt-row:focus-visible, .glass-panel:focus-visible { outline-offset: -2px; }
+input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgba(229,188,139,0.55); }
+input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px rgba(229,188,139,0.55); }
+[role="dialog"]:focus { outline: none; }
+
+/* En celular los campos van a 16 px: con menos, el iPhone amplía la
+   página al tocarlos y la descuadra */
+@media (max-width: 900px) {
+  input:not([type="range"]):not([type="checkbox"]):not([type="radio"]), select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Con dedo, ningún botón por debajo de 44 px (los controles del mapa
+   tienen su propio tamaño) */
+@media (pointer: coarse) {
+  button:not(.maplibregl-ctrl button), [role="button"], select {
+    min-height: 44px;
+  }
+  button:not(.maplibregl-ctrl button) { min-width: 44px; }
+}
+
+/* El teléfono pide menos movimiento: sin animaciones ni transiciones */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -10,6 +10,7 @@ import { GTAOPass } from "three/examples/jsm/postprocessing/GTAOPass.js";
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { CASAS_3D } from "../casas3d";
 import { dentroDe } from "../loteTerreno";
+import { menosMovimiento } from "./ui";
 
 /* ══════════════════════════════════════════════════
    MAQUETA 3D DE LA CASA
@@ -482,7 +483,7 @@ function geometriaAgua(poly) {
   return g;
 }
 
-export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)", lote = null, relieve = null, giro = 0, onInfo }) {
+export default function Casa3D({ modelo, alto = "clamp(340px, 58svh, 620px)", lote = null, relieve = null, giro = 0, onInfo }) {
   const [hora, setHora] = useState("dia");
   const boxRef = useRef(null);
   const capaRef = useRef(null);
@@ -799,7 +800,7 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)", lot
     ctrl.minDistance = radio * 0.55;
     ctrl.maxDistance = radio * 3;
     ctrl.maxPolarAngle = Math.PI / 2.08;   // no deja meterse bajo el piso
-    ctrl.autoRotate = true;
+    ctrl.autoRotate = !menosMovimiento();   // no gira sola si el teléfono pide menos movimiento
     ctrl.autoRotateSpeed = 0.45;
     camara.position.set(centro.x + radio * 0.95, centro.y + radio * 1.55, centro.z + radio * 1.15);
 

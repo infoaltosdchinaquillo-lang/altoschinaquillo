@@ -56,8 +56,8 @@ export default function Terreno() {
             ].map((b) => (
               <button key={b.k} onClick={() => setBasemap(b.k)}
                 style={{ padding: "9px 18px", fontSize: 12.5, cursor: "pointer", border: "none", borderRadius: 999,
-                  background: basemap === b.k ? "linear-gradient(150deg,#E5BC8B,#C99A63)" : "transparent",
-                  color: basemap === b.k ? "#17110B" : "#8B8173" }}>
+                  background: basemap === b.k ? "var(--grad-oro)" : "transparent",
+                  color: basemap === b.k ? "var(--tinta)" : "var(--texto-3)" }}>
                 {b.l}
               </button>
             ))}
@@ -66,13 +66,13 @@ export default function Terreno() {
           <label className="glass-pill" style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 18px" }}>
             <span className="meta" style={{ fontSize: 12 }}>Relieve ×{exag.toFixed(1)}</span>
             <input type="range" min="1" max="4" step="0.1" value={exag}
-              onChange={(e) => setExag(+e.target.value)} style={{ width: 110, accentColor: "#C99A63" }} />
+              onChange={(e) => setExag(+e.target.value)} style={{ width: 110, accentColor: "var(--oro)" }} />
           </label>
         </div>
 
         <Suspense
           fallback={
-            <div className="glass" style={{ height: "72vh", display: "grid", placeItems: "center" }}>
+            <div className="glass" style={{ height: "72svh", display: "grid", placeItems: "center" }}>
               <span className="meta">Cargando mapa…</span>
             </div>
           }>
@@ -99,7 +99,7 @@ export default function Terreno() {
             ].map((s, i) => (
               <div key={i} className="glass" style={{ padding: "24px 22px" }}>
                 <div className="num gold" style={{ fontSize: 28 }}>{s.v}</div>
-                <div style={{ fontSize: 14, color: "#E8DFD3", marginTop: 10 }}>{s.l}</div>
+                <div style={{ fontSize: 14, color: "var(--texto)", marginTop: 10 }}>{s.l}</div>
                 <div className="meta" style={{ marginTop: 5, fontSize: 12.5 }}>{s.d}</div>
               </div>
             ))}
@@ -107,7 +107,7 @@ export default function Terreno() {
         )}
 
         <div className="glass" style={{ marginTop: 24, padding: 24 }}>
-          <div className="eyebrow" style={{ fontSize: 10.5 }}>Sobre la precisión</div>
+          <div className="eyebrow" style={{ fontSize: 11.5 }}>Sobre la precisión</div>
           <p className="body" style={{ marginTop: 12, maxWidth: 680 }}>
             La forma y la ubicación de cada lote salen del plano topográfico oficial (P-1), con coordenadas
             MAGNA-SIRGAS: son exactas. El relieve viene de datos públicos gratuitos (~12–30 m de resolución):

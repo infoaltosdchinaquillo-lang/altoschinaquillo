@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState, useMemo, useRef } from "react";
 import { LOTS, TOTAL, SOLD, AVAIL, AREA_MIN, AREA_MAX, TERRENO, cop, wa, planPago, proyectar, VALORIZACION_NOTA } from "../data";
-import { IconWa, IconClose, useReveal } from "../components/ui";
+import { IconWa, IconClose, useReveal, useDialogo, useLockScroll, menosMovimiento } from "../components/ui";
 import LotModal from "../components/LotModal";
 
 /* MapLibre pesa ~250 KB gzip: se descarga solo al entrar a esta página */
@@ -88,8 +88,8 @@ export default function Lotes() {
               ].map((f) => (
                 <button key={f.k} onClick={() => setFilter(f.k)}
                   style={{ padding: "11px 19px", fontSize: 13, fontWeight: 500, cursor: "pointer", border: "none", borderRadius: 999,
-                    background: filter === f.k ? "linear-gradient(150deg,#E5BC8B,#C99A63)" : "transparent",
-                    color: filter === f.k ? "#17110B" : "#8B8173",
+                    background: filter === f.k ? "var(--grad-oro)" : "transparent",
+                    color: filter === f.k ? "var(--tinta)" : "var(--texto-3)",
                     boxShadow: filter === f.k ? "inset 0 1px 0 rgba(255,255,255,0.35)" : "none",
                     transition: "all 0.45s cubic-bezier(0.16,1,0.3,1)", whiteSpace: "nowrap" }}>
                   {f.l} <span style={{ opacity: 0.65, marginLeft: 3 }}>{f.n}</span>
@@ -105,7 +105,7 @@ export default function Lotes() {
               )}
               <select value={terreno} onChange={(e) => setTerreno(e.target.value)} className="glass-pill"
                 aria-label="Filtrar por tipo de terreno"
-                style={{ padding: "12px 18px", fontSize: 13, color: "#E8DFD3", cursor: "pointer", border: "none", outline: "none",
+                style={{ padding: "12px 18px", fontSize: 13, color: "var(--texto)", cursor: "pointer", border: "none", outline: "none",
                   fontFamily: "inherit", appearance: "none", paddingRight: 40,
                   backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23857B6D' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")",
                   backgroundRepeat: "no-repeat", backgroundPosition: "right 15px center" }}>
@@ -115,7 +115,7 @@ export default function Lotes() {
                 ))}
               </select>
               <select value={orden} onChange={(e) => setOrden(e.target.value)} className="glass-pill"
-                style={{ padding: "12px 18px", fontSize: 13, color: "#E8DFD3", cursor: "pointer", border: "none", outline: "none",
+                style={{ padding: "12px 18px", fontSize: 13, color: "var(--texto)", cursor: "pointer", border: "none", outline: "none",
                   fontFamily: "inherit", appearance: "none", paddingRight: 40,
                   backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23857B6D' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")",
                   backgroundRepeat: "no-repeat", backgroundPosition: "right 15px center" }}>
@@ -129,13 +129,13 @@ export default function Lotes() {
             <div className="lt-map" ref={mapaRef}>
               <Suspense
                 fallback={
-                  <div className="glass" style={{ height: "min(78vh, 760px)", display: "grid", placeItems: "center" }}>
+                  <div className="glass" style={{ height: "min(78svh, 760px)", display: "grid", placeItems: "center" }}>
                     <span className="meta">Cargando mapa…</span>
                   </div>
                 }>
                 <Terrain3D lots={LOTS} hovered={hovered} selected={modal} onHover={setHovered} onSelect={setModal}
                   casaLote={casaLote} onCasaLote={setCasaLote}
-                  alto="min(78vh, 760px)" />
+                  alto="min(78svh, 760px)" />
               </Suspense>
               <p className="meta" style={{ marginTop: 12, fontSize: 12.5 }}>
                 Lotes del plano topográfico oficial sobre el relieve real de la montaña. Cambia a «Plano» para verlo desde arriba.
@@ -171,7 +171,7 @@ export default function Lotes() {
           onVerEnMapa={(modelo, giro) => {
             setCasaLote({ lot: modal, modelo, giro });
             setModal(null);
-            mapaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+            mapaRef.current?.scrollIntoView({ behavior: menosMovimiento() ? "auto" : "smooth", block: "center" });
           }}
           onCompare={toggleCompare} inCompare={compare.some((x) => x.id === modal.id)} />
       )}
@@ -186,7 +186,7 @@ export default function Lotes() {
             <span className="meta" style={{ paddingLeft: 8, whiteSpace: "nowrap" }}>{compare.length} seleccionado{compare.length !== 1 ? "s" : ""}</span>
             <button className="btn btn-primary" style={{ padding: "10px 20px", fontSize: 13 }} onClick={() => setShowCompare(true)}>Comparar</button>
             <button onClick={() => setCompare([])} aria-label="Limpiar"
-              style={{ background: "none", border: "none", color: "#857B6D", cursor: "pointer", padding: 6, display: "flex" }}>
+              style={{ background: "none", border: "none", color: "var(--texto-3)", cursor: "pointer", padding: 6, display: "flex" }}>
               <IconClose s={14} />
             </button>
           </div>
@@ -199,7 +199,7 @@ export default function Lotes() {
         .lt-map { position: sticky; top: 94px; }
         .lt-list {
           display: flex; flex-direction: column; gap: 7px;
-          max-height: 84vh; overflow-y: auto;
+          max-height: 84svh; overflow-y: auto;
           padding: 2px 10px 2px 2px;
           scrollbar-gutter: stable;
         }
@@ -248,7 +248,7 @@ export default function Lotes() {
           font-family: 'Fraunces', serif; font-variant-numeric: tabular-nums;
           font-size: 20px; line-height: 1.1; letter-spacing: -.02em; color: #D9AE7B;
         }
-        .lt-price-sub { font-size: 11px; color: #7A7164; font-variant-numeric: tabular-nums; }
+        .lt-price-sub { font-size: 11px; color: var(--texto-3); font-variant-numeric: tabular-nums; }
 
         /* Botón comparar — tamaño fijo, nunca se aplasta */
         .lt-cmp {
@@ -257,7 +257,7 @@ export default function Lotes() {
           display: flex; align-items: center; justify-content: center;
           background: rgba(255,255,255,.045);
           border: 1px solid rgba(255,255,255,.09);
-          color: #6E6659;
+          color: var(--texto-3);
           opacity: 0; transition: all .3s ease;
         }
         .lt-cmp svg { width: 12px; height: 12px; }
@@ -269,7 +269,7 @@ export default function Lotes() {
 
         .lt-go {
           width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
-          color: #5E574C; transition: color .3s ease, transform .3s ease;
+          color: var(--texto-3); transition: color .3s ease, transform .3s ease;
         }
         .lt-go svg { width: 15px; height: 15px; }
         .lt-row:hover .lt-go, .lt-row[data-active] .lt-go { color: #D9AE7B; transform: translateX(3px); }
@@ -313,7 +313,7 @@ function LotRow({ lot, active, inCompare, onEnter, onLeave, onClick, onCompare }
           <span className="lt-name" style={{ fontSize: 16, color: "#9A8F80" }}>{lot.name}</span>
           <span className="lt-area">{lot.area.toLocaleString("es-CO")} m²</span>
         </div>
-        <span style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", color: "#6F675B", whiteSpace: "nowrap" }}>
+        <span style={{ fontSize: 11.5, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--texto-3)", whiteSpace: "nowrap" }}>
           Vendido
         </span>
       </div>
@@ -325,9 +325,19 @@ function LotRow({ lot, active, inCompare, onEnter, onLeave, onClick, onCompare }
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label={`Lote ${lot.name}, ${lot.area.toLocaleString("es-CO")} metros cuadrados, ${lot.price} millones. Ver ficha`}
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
+      onFocus={onEnter}
+      onBlur={onLeave}
       onClick={onClick}
+      /* Enter o espacio abren el lote; no si el foco está en el botón de comparar */
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); }
+      }}
       className="lt-row"
       data-active={active ? "1" : undefined}
     >
@@ -362,7 +372,8 @@ function LotRow({ lot, active, inCompare, onEnter, onLeave, onClick, onCompare }
         data-on={inCompare ? "1" : undefined}
         onClick={(e) => { e.stopPropagation(); onCompare(); }}
         title={inCompare ? "Quitar de comparación" : "Añadir a comparación"}
-        aria-label="Comparar"
+        aria-label={inCompare ? `Quitar ${lot.name} de la comparación` : `Comparar ${lot.name}`}
+        aria-pressed={inCompare}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
           {inCompare ? <path d="M5 12l5 5L20 7"/> : <path d="M12 5v14M5 12h14"/>}
@@ -383,6 +394,8 @@ function LotRow({ lot, active, inCompare, onEnter, onLeave, onClick, onCompare }
    COMPARADOR
    ══════════════════════════════════════════════════ */
 function CompareModal({ lots, onClose, onRemove }) {
+  useLockScroll(true);
+  const panel = useDialogo(onClose);
   const filas = [
     { l: "Área",             v: (x) => `${x.area.toLocaleString("es-CO")} m²` },
     { l: "Precio",           v: (x) => cop(x.price * 1e6), gold: true },
@@ -393,14 +406,15 @@ function CompareModal({ lots, onClose, onRemove }) {
   ];
 
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 210, display: "flex", alignItems: "center", justifyContent: "center", padding: 18 }}>
+    <div role="presentation" onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 210, display: "flex", alignItems: "center", justifyContent: "center", padding: 18 }}>
       <div style={{ position: "absolute", inset: 0, background: "rgba(6,5,4,0.86)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", animation: "fadeIn 0.3s ease" }} />
 
-      <div onClick={(e) => e.stopPropagation()} className="glass-panel"
-        style={{ position: "relative", width: "100%", maxWidth: 880, maxHeight: "88vh", overflowY: "auto", animation: "modalIn 0.5s cubic-bezier(0.16,1,0.3,1)" }}>
+      <div ref={panel} role="dialog" aria-modal="true" aria-label="Comparación de lotes" tabIndex={-1}
+        onClick={(e) => e.stopPropagation()} className="glass-panel"
+        style={{ position: "relative", width: "100%", maxWidth: 880, maxHeight: "88dvh", overflowY: "auto", animation: "modalIn 0.5s cubic-bezier(0.16,1,0.3,1)" }}>
 
         <button onClick={onClose} aria-label="Cerrar" className="glass-pill"
-          style={{ position: "absolute", top: 20, right: 20, zIndex: 10, width: 42, height: 42, color: "#E8DFD3", cursor: "pointer",
+          style={{ position: "absolute", top: 20, right: 20, zIndex: 10, width: 42, height: 42, color: "var(--texto)", cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
           <IconClose s={16} />
         </button>
@@ -420,7 +434,7 @@ function CompareModal({ lots, onClose, onRemove }) {
                     <th key={l.id} style={{ padding: "0 12px 16px", textAlign: "center", minWidth: 128 }}>
                       <div style={{ fontFamily: "Fraunces, serif", fontSize: 19, color: "#F2EBE0" }}>{l.name}</div>
                       <button onClick={() => onRemove(l)}
-                        style={{ background: "none", border: "none", color: "#6F675B", cursor: "pointer", fontSize: 11.5, marginTop: 6, padding: 4 }}>
+                        style={{ background: "none", border: "none", color: "var(--texto-3)", cursor: "pointer", fontSize: 11.5, marginTop: 6, padding: 4 }}>
                         Quitar
                       </button>
                     </th>
@@ -433,7 +447,7 @@ function CompareModal({ lots, onClose, onRemove }) {
                     <td className="meta" style={{ padding: "15px 0", borderTop: "1px solid rgba(255,255,255,0.06)", whiteSpace: "nowrap" }}>{f.l}</td>
                     {lots.map((l) => (
                       <td key={l.id} style={{ padding: "15px 12px", borderTop: "1px solid rgba(255,255,255,0.06)", textAlign: "center",
-                        fontSize: f.gold ? 15.5 : 14, color: f.gold ? "#D9AE7B" : "#E8DFD3",
+                        fontSize: f.gold ? 15.5 : 14, color: f.gold ? "var(--oro-texto)" : "var(--texto)",
                         fontFamily: f.gold ? "Fraunces, serif" : "inherit", whiteSpace: "nowrap" }}>
                         {f.v(l)}
                       </td>

@@ -5,6 +5,10 @@ import { LOTES_GEO, PREDIO, RESERVA, ZONAS_VERDES } from "../lotesGeo";
 import { MODELOS } from "../data";
 import { CASAS_3D } from "../casas3d";
 import { loteLocal, relieve } from "../loteTerreno";
+import { menosMovimiento } from "./ui";
+
+/* duración de un movimiento de cámara: 0 si el teléfono pide menos movimiento */
+const dur = (ms) => (menosMovimiento() ? 0 : ms);
 
 /* ══════════════════════════════════════════════════
    MAPA DEL LOTEO — lotes reales sobre el relieve 3D
@@ -115,8 +119,8 @@ function encuadre(map, modo) {
 
 const botonCasa = (activo) => ({
   padding: "7px 12px", fontSize: 12, cursor: "pointer", border: "none", borderRadius: 999,
-  background: activo ? "linear-gradient(150deg,#E5BC8B,#C99A63)" : "rgba(255,255,255,0.07)",
-  color: activo ? "#17110B" : "#D8CFC3",
+  background: activo ? "var(--grad-oro)" : "rgba(255,255,255,0.07)",
+  color: activo ? "var(--tinta)" : "#D8CFC3",
 });
 
 /* Contenido de la ficha flotante: HTML plano, porque vive dentro de MapLibre y no de React */
@@ -140,7 +144,7 @@ export default function Terrain3D({
   onCasaLote,
   exageracion = 1.6,
   onAlturas,
-  alto = "72vh",
+  alto = "72svh",
 }) {
   const boxRef = useRef(null);
   const mapRef = useRef(null);
@@ -421,7 +425,7 @@ export default function Terrain3D({
       /* la cámara se para ladera abajo mirando la casa y la subida */
       const rumbo = 90 - ((rel.bajada + Math.PI) * 180) / Math.PI;
       setVista("3d");
-      map.easeTo({ center: geo.label, zoom: 19.6, pitch: 60, bearing: rumbo, duration: 2200 });
+      map.easeTo({ center: geo.label, zoom: 19.6, pitch: 60, bearing: rumbo, duration: dur(2200) });
       map.once("idle", poner);
     }).catch(() => vivo && setCasaMsg("No se pudo cargar el relieve del lote. Intenta de nuevo."));
     return () => { vivo = false; };
@@ -449,7 +453,7 @@ export default function Terrain3D({
     const map = mapRef.current;
     if (!map) return;
     setVista(v);
-    map.easeTo({ ...encuadre(map, v), duration: 1400 });
+    map.easeTo({ ...encuadre(map, v), duration: dur(1400) });
   };
 
   const volar = () => {
@@ -457,13 +461,13 @@ export default function Terrain3D({
     if (!map) return;
     setVista("3d");
     const { center } = encuadre(map, "3d");
-    map.easeTo({ center, zoom: ZOOM_MIN + 0.2, pitch: 68, bearing: map.getBearing() - 170, duration: 5000 });
-    map.once("moveend", () => map.easeTo({ ...encuadre(map, "3d"), duration: 3500 }));
+    map.easeTo({ center, zoom: ZOOM_MIN + 0.2, pitch: 68, bearing: map.getBearing() - 170, duration: dur(5000) });
+    map.once("moveend", () => map.easeTo({ ...encuadre(map, "3d"), duration: dur(3500) }));
   };
 
   return (
     <div className="glass" style={{ position: "relative", padding: 0, overflow: "hidden" }}>
-      <div ref={boxRef} style={{ width: "100%", height: alto, background: "#0B0908" }} />
+      <div ref={boxRef} style={{ width: "100%", height: alto, background: "var(--fondo)" }} />
 
       {/* Vista 3D / plano */}
       <div className="glass-pill" style={{ position: "absolute", top: 14, left: 14, zIndex: 5, display: "flex", gap: 3, padding: 4 }}>
@@ -473,8 +477,8 @@ export default function Terrain3D({
         ].map((b) => (
           <button key={b.k} onClick={() => cambiarVista(b.k)}
             style={{ padding: "8px 15px", fontSize: 12, cursor: "pointer", border: "none", borderRadius: 999,
-              background: vista === b.k ? "linear-gradient(150deg,#E5BC8B,#C99A63)" : "transparent",
-              color: vista === b.k ? "#17110B" : "#A29686" }}>
+              background: vista === b.k ? "var(--grad-oro)" : "transparent",
+              color: vista === b.k ? "var(--tinta)" : "var(--texto-2)" }}>
             {b.l}
           </button>
         ))}
@@ -484,7 +488,7 @@ export default function Terrain3D({
       {casaLote && (
         <div className="glass-panel" style={{ position: "absolute", top: 62, left: 14, zIndex: 6, padding: "12px 14px",
           maxWidth: "min(330px, calc(100% - 28px))", borderRadius: 18 }}>
-          <div style={{ fontSize: 13.5, color: "#E8DFD3", marginBottom: 8 }}>
+          <div style={{ fontSize: 13.5, color: "var(--texto)", marginBottom: 8 }}>
             {MODELOS.find((m) => m.id === casaLote.modelo)?.nombre} en el lote {casaLote.lot.name}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
@@ -516,20 +520,20 @@ export default function Terrain3D({
         ].map((x) => (
           <div key={x.l} style={{ display: "flex", alignItems: "center", gap: 7 }}>
             <span style={{ width: 10, height: 10, borderRadius: 3, background: x.c, border: "1px solid rgba(255,255,255,0.45)" }} />
-            <span style={{ fontSize: 11.5, color: "#A29686" }}>{x.l}</span>
+            <span style={{ fontSize: 11.5, color: "var(--texto-2)" }}>{x.l}</span>
           </div>
         ))}
       </div>
 
       <button className="glass-pill" onClick={volar}
         style={{ position: "absolute", bottom: 14, right: 14, zIndex: 5, padding: "10px 18px",
-          fontSize: 12.5, color: "#E8DFD3", cursor: "pointer" }}>
+          fontSize: 12.5, color: "var(--texto)", cursor: "pointer" }}>
         Recorrer
       </button>
 
       {!listo && (
         <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center",
-          background: "#0B0908", zIndex: 6 }}>
+          background: "var(--fondo)", zIndex: 6 }}>
           <span className="meta">Cargando relieve…</span>
         </div>
       )}

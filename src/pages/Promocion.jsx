@@ -48,7 +48,7 @@ export default function Promocion() {
         <div className="wrap" style={{ position: "relative", zIndex: 2 }}>
           <div className="glass-gold" style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "9px 20px", borderRadius: 999, marginBottom: 28 }}>
             <Dot color="#D9AE7B" />
-            <span className="eyebrow" style={{ fontSize: 10.5 }}>Tres modelos</span>
+            <span className="eyebrow" style={{ fontSize: 11.5 }}>Tres modelos</span>
           </div>
           <h1 className="h1" style={{ maxWidth: 800 }}>
             Casa + Lote<br /><span className="serif-em">lista para vivir</span>
@@ -71,7 +71,7 @@ export default function Promocion() {
                   style={{ padding: "24px 26px", textAlign: "left", cursor: "pointer",
                     border: activo ? "1px solid rgba(201,154,99,0.65)" : undefined,
                     transition: "all 0.45s cubic-bezier(0.16,1,0.3,1)" }}>
-                  <div style={{ fontFamily: "Fraunces, serif", fontSize: 21, color: activo ? "#FBF3E7" : "#E8DFD3" }}>
+                  <div style={{ fontFamily: "Fraunces, serif", fontSize: 21, color: activo ? "#FBF3E7" : "var(--texto)" }}>
                     {x.nombre}
                   </div>
                   <div className="num gold" style={{ fontSize: 26, marginTop: 10 }}>${x.precio}M</div>
@@ -96,8 +96,8 @@ export default function Promocion() {
           <button onClick={() => setLightbox(true)} className="glass"
             style={{ position: "relative", width: "100%", padding: 0, cursor: "zoom-in", display: "block", overflow: "hidden" }}>
             <img src={img.src} alt={img.label}
-              style={{ width: "100%", height: "auto", maxHeight: "72vh", objectFit: "contain", background: "#0B0908" }} />
-            <span className="glass-pill" style={{ position: "absolute", bottom: 18, right: 18, padding: "11px 20px", display: "flex", alignItems: "center", gap: 9, fontSize: 13, color: "#E8DFD3" }}>
+              style={{ width: "100%", height: "auto", maxHeight: "72svh", objectFit: "contain", background: "var(--fondo)" }} />
+            <span className="glass-pill" style={{ position: "absolute", bottom: 18, right: 18, padding: "11px 20px", display: "flex", alignItems: "center", gap: 9, fontSize: 13, color: "var(--texto)" }}>
               <IconExpand s={15} /> Ampliar y hacer zoom
             </span>
           </button>
@@ -107,7 +107,7 @@ export default function Promocion() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginTop: 24 }}>
             {imagenes.map((p, i) => (
               <button key={p.src} onClick={() => setIdx(i)}
-                style={{ position: "relative", aspectRatio: "16/10", padding: 0, cursor: "pointer", overflow: "hidden", borderRadius: 16, background: "#0B0908",
+                style={{ position: "relative", aspectRatio: "16/10", padding: 0, cursor: "pointer", overflow: "hidden", borderRadius: 16, background: "var(--fondo)",
                   border: i === idx ? "1.5px solid rgba(201,154,99,0.8)" : "1px solid rgba(255,255,255,0.09)",
                   opacity: i === idx ? 1 : 0.55,
                   boxShadow: i === idx ? "0 0 30px -8px rgba(201,154,99,0.6)" : "none",
@@ -115,7 +115,7 @@ export default function Promocion() {
                 <img src={p.src} alt={p.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 <span style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 10px 10px",
                   background: "linear-gradient(180deg, transparent, rgba(11,9,8,0.92))",
-                  fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "#E8DFD3" }}>
+                  fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--texto)" }}>
                   {p.label}
                 </span>
               </button>
@@ -144,7 +144,7 @@ export default function Promocion() {
                     {m.specs.map((s) => (
                       <div key={s.u}>
                         <div className="num gold" style={{ fontSize: 34 }}>{s.n}</div>
-                        <div style={{ fontSize: 14, color: "#8B8173", marginTop: 10 }}>{s.u}</div>
+                        <div style={{ fontSize: 14, color: "var(--texto-3)", marginTop: 10 }}>{s.u}</div>
                       </div>
                     ))}
                   </div>
@@ -160,7 +160,7 @@ export default function Promocion() {
                 <div className="eyebrow" style={{ marginBottom: 24 }}>Incluye</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                   {m.incluye.map((t) => (
-                    <div key={t} style={{ display: "flex", alignItems: "flex-start", gap: 14, fontSize: 15.5, color: "#A29686", lineHeight: 1.6 }}>
+                    <div key={t} style={{ display: "flex", alignItems: "flex-start", gap: 14, fontSize: 15.5, color: "var(--texto-2)", lineHeight: 1.6 }}>
                       <span style={{ marginTop: 3 }}><IconCheck /></span> {t}
                     </div>
                   ))}
@@ -187,8 +187,8 @@ export default function Promocion() {
                 {[{ k: "3d", l: "Maqueta 3D" }, { k: "plano", l: "Plano" }].map((b) => (
                   <button key={b.k} onClick={() => setVistaPlano(b.k)}
                     style={{ padding: "9px 18px", fontSize: 12.5, cursor: "pointer", border: "none", borderRadius: 999,
-                      background: vistaPlano === b.k ? "linear-gradient(150deg,#E5BC8B,#C99A63)" : "transparent",
-                      color: vistaPlano === b.k ? "#17110B" : "#8B8173" }}>
+                      background: vistaPlano === b.k ? "var(--grad-oro)" : "transparent",
+                      color: vistaPlano === b.k ? "var(--tinta)" : "var(--texto-3)" }}>
                     {b.l}
                   </button>
                 ))}
@@ -198,7 +198,7 @@ export default function Promocion() {
             <div style={{ marginTop: 20 }}>
               {vistaPlano === "3d" && tiene3d ? (
                 <Suspense fallback={
-                  <div className="glass" style={{ height: "clamp(340px, 58vh, 620px)", display: "grid", placeItems: "center" }}>
+                  <div className="glass" style={{ height: "clamp(340px, 58svh, 620px)", display: "grid", placeItems: "center" }}>
                     <span className="meta">Levantando la maqueta…</span>
                   </div>
                 }>
@@ -233,7 +233,7 @@ export default function Promocion() {
               <span className="num gold" style={{ fontSize: 24 }}>{meses} meses</span>
             </div>
             <input type="range" min={6} max={VIVIENDA.mesesMax} value={meses} onChange={(e) => setMeses(+e.target.value)} />
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#6F675B" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--texto-3)" }}>
               <span>6 meses</span><span>{VIVIENDA.mesesMax} meses</span>
             </div>
 
@@ -244,7 +244,7 @@ export default function Promocion() {
                 { l: "Lo financia el banco", v: cop(plan.banco), d: "Crédito hipotecario, sujeto a estudio" },
               ].map((x) => (
                 <div key={x.l} className={x.oro ? "glass-gold" : "glass"} style={{ padding: "26px 24px", borderRadius: 18 }}>
-                  <div className="meta" style={{ fontSize: 10.5, letterSpacing: "0.16em", textTransform: "uppercase" }}>{x.l}</div>
+                  <div className="meta" style={{ fontSize: 11.5, letterSpacing: "0.16em", textTransform: "uppercase" }}>{x.l}</div>
                   <div className={x.oro ? "num gold" : "num"} style={{ fontSize: 23, marginTop: 12, color: x.oro ? undefined : "#F2EBE0" }}>{x.v}</div>
                   <div className="meta" style={{ marginTop: 10, fontSize: 12.5 }}>{x.d}</div>
                 </div>

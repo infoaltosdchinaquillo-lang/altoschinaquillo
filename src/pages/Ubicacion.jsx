@@ -42,7 +42,7 @@ export default function Ubicacion() {
             {DATOS.map((s, i) => (
               <div key={i} className="glass glass-hover" style={{ padding: "34px 30px" }}>
                 <div className="num gold" style={{ fontSize: 34 }}>{s.v}</div>
-                <div style={{ fontSize: 15, color: "#E8DFD3", marginTop: 14 }}>{s.l}</div>
+                <div style={{ fontSize: 15, color: "var(--texto)", marginTop: 14 }}>{s.l}</div>
                 <div className="meta" style={{ marginTop: 6 }}>{s.d}</div>
               </div>
             ))}
@@ -87,7 +87,7 @@ export default function Ubicacion() {
               {CERCA.map((c, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 20,
                   padding: "18px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                  <span style={{ fontSize: 15.5, color: "#E8DFD3" }}>{c.t}</span>
+                  <span style={{ fontSize: 15.5, color: "var(--texto)" }}>{c.t}</span>
                   <span className="meta" style={{ whiteSpace: "nowrap" }}>{c.d}</span>
                 </div>
               ))}

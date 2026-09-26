@@ -56,8 +56,8 @@ export default function PlanoViewer({ planos }) {
           {planos.map((p, i) => (
             <button key={p.img} onClick={() => cambiarNivel(i)}
               style={{ padding: "8px 16px", fontSize: 12.5, cursor: "pointer", border: "none", borderRadius: 999,
-                background: i === nivel ? "linear-gradient(150deg,#E5BC8B,#C99A63)" : "transparent",
-                color: i === nivel ? "#17110B" : "#A29686" }}>
+                background: i === nivel ? "var(--grad-oro)" : "transparent",
+                color: i === nivel ? "var(--tinta)" : "var(--texto-2)" }}>
               {p.nivel}
             </button>
           ))}
@@ -72,7 +72,7 @@ export default function PlanoViewer({ planos }) {
         ].map((b) => (
           <button key={b.l} onClick={b.fn} disabled={b.d} className="glass-pill"
             style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
-              fontSize: 16, lineHeight: 1, color: b.d ? "#4F4940" : "#E8DFD3", cursor: b.d ? "default" : "pointer" }}>
+              fontSize: 16, lineHeight: 1, color: b.d ? "#4F4940" : "var(--texto)", cursor: b.d ? "default" : "pointer" }}>
             {b.l}
           </button>
         ))}
@@ -100,12 +100,12 @@ export default function PlanoViewer({ planos }) {
                 style={{ position: "absolute", left: `${a.x}%`, top: `${a.y}%`,
                   transform: `translate(-50%,-50%) scale(${1 / zoom})`,
                   width: 26, height: 26, borderRadius: "50%", padding: 0, cursor: "pointer", zIndex: on ? 5 : 2,
-                  background: on ? "linear-gradient(150deg,#E5BC8B,#C99A63)" : "rgba(24,20,16,0.82)",
+                  background: on ? "var(--grad-oro)" : "rgba(24,20,16,0.82)",
                   border: on ? "2px solid #FFF8EE" : "1.5px solid rgba(255,255,255,0.8)",
                   boxShadow: on ? "0 0 0 7px rgba(201,154,99,0.3)" : "0 2px 8px rgba(0,0,0,0.35)",
                   transition: "background .3s ease, box-shadow .3s ease, border-color .3s ease" }}>
                 <span style={{ display: "block", width: 6, height: 6, borderRadius: "50%", margin: "0 auto",
-                  background: on ? "#17110B" : "#E5BC8B" }} />
+                  background: on ? "var(--tinta)" : "var(--oro-claro)" }} />
               </button>
             );
           })}
@@ -129,7 +129,7 @@ export default function PlanoViewer({ planos }) {
         </span>
         {zoom > 1 && (
           <button onClick={reset} className="glass-pill"
-            style={{ padding: "8px 16px", fontSize: 12, color: "#E8DFD3", cursor: "pointer" }}>
+            style={{ padding: "8px 16px", fontSize: 12, color: "var(--texto)", cursor: "pointer" }}>
             Ver completo
           </button>
         )}

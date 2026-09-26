@@ -40,7 +40,7 @@ export default function Layout({ children }) {
             style={{ height: 62, display: "flex", alignItems: "center", justifyContent: "space-between",
               padding: solid ? "0 26px" : "0", transition: "all 0.6s cubic-bezier(0.16,1,0.3,1)" }}>
 
-            <Link to="/" style={{ fontFamily: "Fraunces, serif", fontSize: 19, letterSpacing: "0.18em", color: "#D9AE7B", textDecoration: "none", fontWeight: 500 }}>
+            <Link to="/" style={{ fontFamily: "Fraunces, serif", fontSize: 19, letterSpacing: "0.18em", color: "var(--oro-texto)", textDecoration: "none", fontWeight: 500 }}>
               ALTOS
             </Link>
 
@@ -49,7 +49,7 @@ export default function Layout({ children }) {
                 <NavLink key={n.to} to={n.to}
                   style={({ isActive }) => ({
                     fontSize: 14, textDecoration: "none", padding: "9px 15px", borderRadius: 999,
-                    color: isActive ? "#F2EBE0" : "#A29686",
+                    color: isActive ? "#F2EBE0" : "var(--texto-2)",
                     background: isActive ? "rgba(201,154,99,0.14)" : "transparent",
                     transition: "all 0.35s ease",
                   })}>
@@ -63,7 +63,7 @@ export default function Layout({ children }) {
             </div>
 
             <button onClick={() => setMenu(!menu)} aria-label="Menú" className="nav-mobile glass-pill"
-              style={{ display: "none", width: 44, height: 44, alignItems: "center", justifyContent: "center", color: "#E8DFD3", cursor: "pointer", padding: 0 }}>
+              style={{ display: "none", width: 44, height: 44, alignItems: "center", justifyContent: "center", color: "var(--texto)", cursor: "pointer", padding: 0 }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
                 {menu ? <path d="M6 6l12 12M6 18L18 6"/> : <path d="M3 8h18M3 16h18"/>}
               </svg>
@@ -78,7 +78,7 @@ export default function Layout({ children }) {
                 <NavLink key={n.to} to={n.to}
                   style={({ isActive }) => ({
                     display: "block", fontSize: 16.5, textDecoration: "none", padding: "14px 8px",
-                    color: isActive ? "#D9AE7B" : "#E8DFD3",
+                    color: isActive ? "var(--oro-texto)" : "var(--texto)",
                     borderBottom: "1px solid rgba(255,255,255,0.05)",
                   })}>
                   {n.label}
@@ -100,13 +100,13 @@ export default function Layout({ children }) {
         <div className="wrap">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 44 }}>
             <div>
-              <div style={{ fontFamily: "Fraunces, serif", fontSize: 19, letterSpacing: "0.18em", color: "#D9AE7B", fontWeight: 500 }}>ALTOS</div>
+              <div style={{ fontFamily: "Fraunces, serif", fontSize: 19, letterSpacing: "0.18em", color: "var(--oro-texto)", fontWeight: 500 }}>ALTOS</div>
               <p className="body" style={{ marginTop: 18, maxWidth: 270 }}>
                 Urbanización campestre en Chinácota, Norte de Santander. Lotes desde 1.000 m² con servicios y financiación directa.
               </p>
             </div>
             <div>
-              <div className="eyebrow" style={{ fontSize: 10.5 }}>Navegación</div>
+              <div className="eyebrow" style={{ fontSize: 11.5 }}>Navegación</div>
               <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 9 }}>
                 {NAV.map((n) => (
                   <Link key={n.to} to={n.to} className="body" style={{ textDecoration: "none", fontSize: 15 }}>{n.label}</Link>
@@ -114,16 +114,16 @@ export default function Layout({ children }) {
               </div>
             </div>
             <div>
-              <div className="eyebrow" style={{ fontSize: 10.5 }}>Ubicación</div>
+              <div className="eyebrow" style={{ fontSize: 11.5 }}>Ubicación</div>
               <p className="body" style={{ marginTop: 18 }}>Vereda La Victoria<br />Chinácota, Norte de Santander<br />Colombia</p>
             </div>
             <div>
-              <div className="eyebrow" style={{ fontSize: 10.5 }}>Contacto</div>
+              <div className="eyebrow" style={{ fontSize: 11.5 }}>Contacto</div>
               <p className="body" style={{ marginTop: 18 }}>WhatsApp {TEL_DISPLAY}<br />@altos_del_chinaquillo</p>
             </div>
           </div>
           <div className="hair" style={{ margin: "52px 0 26px" }} />
-          <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12, fontSize: 13, color: "#6F675B", letterSpacing: "0.04em" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12, fontSize: 13, color: "var(--texto-3)", letterSpacing: "0.04em" }}>
             <span>© {new Date().getFullYear()} Altos del Chinaquillo</span>
             <span>{AVAIL} lotes disponibles</span>
           </div>

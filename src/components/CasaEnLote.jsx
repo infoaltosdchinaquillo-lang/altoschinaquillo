@@ -14,8 +14,8 @@ import { loteLocal, relieve as leerRelieve } from "../loteTerreno";
 
 const pill = (activo) => ({
   padding: "8px 14px", fontSize: 12, cursor: "pointer", border: "none", borderRadius: 999,
-  background: activo ? "linear-gradient(150deg,#E5BC8B,#C99A63)" : "transparent",
-  color: activo ? "#17110B" : "#A29686",
+  background: activo ? "var(--grad-oro)" : "transparent",
+  color: activo ? "var(--tinta)" : "var(--texto-2)",
 });
 
 export default function CasaEnLote({ lot, onVerEnMapa }) {
@@ -43,7 +43,7 @@ export default function CasaEnLote({ lot, onVerEnMapa }) {
       {onVerEnMapa && (
         <button onClick={() => onVerEnMapa(modelo, giro)}
           style={{ width: "100%", marginBottom: 14, padding: "13px 18px", border: "none", borderRadius: 14, cursor: "pointer",
-            fontSize: 14, fontWeight: 600, color: "#17110B", background: "linear-gradient(150deg,#E5BC8B,#C99A63)" }}>
+            fontSize: 14, fontWeight: 600, color: "var(--tinta)", background: "var(--grad-oro)" }}>
           Verla puesta en el mapa del proyecto
         </button>
       )}
@@ -67,7 +67,7 @@ export default function CasaEnLote({ lot, onVerEnMapa }) {
       ) : (
         <div style={{ position: "relative" }}>
           <Casa3D key={modelo} modelo={modelo} lote={lote} relieve={rel} giro={giro} onInfo={setInfo}
-            alto="clamp(320px, 52vh, 520px)" />
+            alto="clamp(320px, 52svh, 520px)" />
           {!rel && (
             <span className="glass-pill meta" style={{ position: "absolute", top: 60, left: "50%", transform: "translateX(-50%)",
               padding: "8px 14px", fontSize: 12, zIndex: 4 }}>
@@ -86,14 +86,14 @@ export default function CasaEnLote({ lot, onVerEnMapa }) {
             { v: `${info.pendiente.toFixed(0)} %`, l: "Pendiente aproximada" },
           ].map((d) => (
             <div key={d.l} className="glass" style={{ padding: "12px 14px" }}>
-              <div style={{ fontSize: 19, color: "#E8DFD3" }}>{d.v}</div>
+              <div style={{ fontSize: 19, color: "var(--texto)" }}>{d.v}</div>
               <div className="meta" style={{ fontSize: 11.5 }}>{d.l}</div>
             </div>
           ))}
         </div>
       )}
       {info && (
-        <p style={{ marginTop: 12, fontSize: 13.5, color: info.cabe ? "#9DC47A" : "#E5A15B" }}>
+        <p style={{ marginTop: 12, fontSize: 13.5, color: info.cabe ? "var(--verde)" : "#E5A15B" }}>
           {info.cabe
             ? "La casa cabe dentro de los linderos del lote en esta posición."
             : "En esta posición la casa (o su terraza) se sale del lindero: gírala o prueba otro modelo."}

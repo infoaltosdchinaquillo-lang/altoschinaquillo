@@ -122,7 +122,7 @@ export default function Contacto() {
 
                 <a className="glass glass-hover" href={`tel:+${WA}`} style={{ padding: "26px 28px", textDecoration: "none", display: "block" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                    <span style={{ color: "#C99A63" }}>
+                    <span style={{ color: "var(--oro)" }}>
                       <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
                         <path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.4 1.8.7 2.7a2 2 0 01-.5 2.1L8.1 9.9a16 16 0 006 6l1.4-1.2a2 2 0 012.1-.5c.9.3 1.8.6 2.7.7a2 2 0 011.7 2z"/>
                       </svg>
@@ -137,7 +137,7 @@ export default function Contacto() {
                 <a className="glass glass-hover" href="https://maps.google.com/?q=Altos+del+Chinaquillo,+Chinácota" target="_blank" rel="noopener noreferrer"
                   style={{ padding: "26px 28px", textDecoration: "none", display: "block" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                    <span style={{ color: "#C99A63" }}><IconPin s={21} /></span>
+                    <span style={{ color: "var(--oro)" }}><IconPin s={21} /></span>
                     <div>
                       <div style={{ fontSize: 16.5, color: "#F2EBE0" }}>Visita el proyecto</div>
                       <div className="meta" style={{ marginTop: 3 }}>Vereda La Victoria, Chinácota</div>
@@ -147,7 +147,7 @@ export default function Contacto() {
               </div>
 
               <div className="glass-gold" style={{ marginTop: 24, padding: "26px 28px" }}>
-                <div className="eyebrow" style={{ fontSize: 10.5 }}>Disponibilidad actual</div>
+                <div className="eyebrow" style={{ fontSize: 11.5 }}>Disponibilidad actual</div>
                 <div className="num gold" style={{ fontSize: 38, marginTop: 12 }}>{AVAIL} lotes</div>
                 <p className="meta" style={{ marginTop: 10 }}>
                   Desde {cop(PRECIO_MIN * 1e6)} con financiación directa sin intereses.
