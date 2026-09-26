@@ -1,0 +1,13 @@
+Texturas de la maqueta 3D (src/components/Casa3D.jsx)
+
+Origen: Poly Haven (polyhaven.com), licencia CC0 (uso libre, también comercial).
+  cielo_1k.hdr, cielo_fondo.jpg   <- kloofendal_48d_partly_cloudy_puresky (2k),
+                                     reducido a 1k y pasado a JPG para el fondo
+  concrete_floor_02_*             <- concrete_floor_02 (1k)
+  muro_color.jpg, piso_color.jpg  <- color de concrete_floor_02, aclarado y con
+                                     menos contraste (repello crema / concreto pulido)
+  brown_planks_03_*               <- deck
+  grey_cartago_01_*               <- piedras de paso y borde de piscina
+                                     (el color se pasó a gris: el original es rojizo)
+  aerial_grass_rock_*             <- césped
+Rugosidad a 512 px; lo demás a 1024 px, JPG calidad ~80.

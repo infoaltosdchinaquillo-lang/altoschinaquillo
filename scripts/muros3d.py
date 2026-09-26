@@ -749,7 +749,12 @@ def exterior(pg, M, caja, huella, agua, am, plano):
     pasos &= fuera_casa & ~cv2.dilate(agua, np.ones((40, 40), np.uint8)) & ~deck
     # borde de la piscina: el muro de 0,15 m del corte B, en todo el contorno
     b = int(plano["bordePiscina"] / PASO_MASK)
+    # la inundación del jacuzzi deja puntas angostas: abrirían rendijas en el césped
+    agua = cv2.morphologyEx(agua, cv2.MORPH_OPEN, np.ones((21, 21), np.uint8))
     borde = cv2.dilate(agua, cv2.getStructuringElement(cv2.MORPH_RECT, (2 * b + 1, 2 * b + 1))) & ~agua
+    # el deck termina donde empieza el borde: si se monta sobre el hueco de
+    # la piscina, por la rendija se ve el vaso bajo el césped
+    deck &= ~cv2.bitwise_or(agua, borde)
     a_m = lambda img: [[[am(*q) for q in anillo] for anillo in poly] for poly in poligonos(img)]
     return {"nivel": plano["terreno"], "deck": a_m(deck), "pasos": a_m(pasos), "borde": a_m(borde),
             "hueco": a_m(cv2.bitwise_or(agua, borde))}
@@ -873,6 +878,199 @@ for p in PLANOS:
     print(f'{p["modelo"]:8} {p["nivel"]:12} {len(muros):5} muros · {len(ambientes):2} ambientes · '
           f'{ancho:.1f} × {fondo:.1f} m · contorno de {len(piso)} vértices')
 
+""" ── Entorno: terreno en pendiente y árboles ──
+La planta de la MR 101 trae curvas de nivel cada metro (capa "ejes", trazo
+punteado; solo 1400, 1401 y 1402 van rotuladas) y los árboles de la
+arquitecta (capas ARQ-ARBOL y vegetacion). Las hojas de planta 1 y 2
+comparten coordenadas, así que caen en el mismo sistema que la casa.
+
+Cota de cada curva: las rotuladas se leen del plano; las demás bajan de
+metro en metro hacia el sur y se identifican por su continuidad a ambos
+lados de la casa (la casa las interrumpe). El número es el orden de la
+curva al unir los tramos punteados (ver `curvas_de`); la imagen de control
+sale con MUROS3D_DIAG.
+
+N+0.0 = cota 1400: el corte B-B' muestra el terreno a nivel del piso
+social junto al muro norte, y por ahí pasa la curva 1400. """
+ENTORNO = {
+    "grande": {
+        "pdf": "PLANTA 1.pdf",
+        "cotaN0": 1400,
+        "curvas": {1402: [1, 2], 1401: [3], 1400: [7, 9], 1399: [10, 11, 12], 1398: [13, 14, 15],
+                   1397: [16, 17, 19], 1396: [18, 20, 22], 1395: [21, 23], 1394: [24, 25],
+                   1393: [26, 27], 1392: [28, 29], 1391: [31, 32], 1390: [33, 34], 1389: [35, 36]},
+        "nCurvas": 37,        # si cambia, el orden de las curvas cambió: revisar
+        "arboles": ["PLANTA 1.pdf", "PLANTA 2.pdf"],
+    },
+}
+ALTO_ARBOL = 1.3      # alto / diámetro de copa: estándar, el plano no da alturas
+
+
+def curvas_de(pg, M):
+    """Une los tramos punteados de la capa 'ejes' en curvas continuas."""
+    segs = []
+    for d in pg.get_drawings():
+        if (d.get("layer") or "") != "ejes":
+            continue
+        for it in d["items"]:
+            if it[0] == "l":
+                a, b = it[1] * M, it[2] * M
+                segs.append([(a.x, a.y), (b.x, b.y)])
+            elif it[0] == "c":
+                a, b = it[1] * M, it[4] * M
+                segs.append([(a.x, a.y), (b.x, b.y)])
+    libres, cadenas = segs[:], []
+    while libres:
+        c = list(libres.pop())
+        cambio = True
+        while cambio:
+            cambio = False
+            for i, s in enumerate(libres):
+                for extremo, idx in ((c[-1], -1), (c[0], 0)):
+                    for k in (0, 1):
+                        if math.dist(extremo, s[k]) < 9:
+                            otro = s[1 - k]
+                            if idx == -1:
+                                c += [otro] if math.dist(c[-1], s[k]) < 1e-6 else [s[k], otro]
+                            else:
+                                c = ([otro] if math.dist(c[0], s[k]) < 1e-6 else [otro, s[k]]) + c
+                            libres.pop(i)
+                            cambio = True
+                            break
+                    if cambio:
+                        break
+                if cambio:
+                    break
+        cadenas.append(c)
+    largo = lambda c: sum(math.dist(c[i], c[i + 1]) for i in range(len(c) - 1))
+    cadenas = [c for c in cadenas if largo(c) > 40]
+    cadenas.sort(key=lambda c: np.mean([p[1] for p in c]))
+    return cadenas
+
+
+def terreno(cfg, cx, cy):
+    """Malla de alturas (metros, relativas a N+0.0) interpolada entre curvas:
+    en cada punto se toman las dos curvas de cota distinta más cercanas y se
+    reparte la altura según la distancia a cada una."""
+    pg = pymupdf.open(f'C:/Users/maick/Downloads/{cfg["pdf"]}')[0]
+    M = pg.rotation_matrix
+    cadenas = curvas_de(pg, M)
+    if len(cadenas) != cfg["nCurvas"]:
+        raise SystemExit(f'{cfg["pdf"]}: {len(cadenas)} curvas en vez de {cfg["nCurvas"]}; revisa ENTORNO')
+    am = lambda x, y: ((x - cx) * K, (cy - y) * K)
+    niveles = {cota: [[am(*p) for p in cadenas[i]] for i in ids] for cota, ids in cfg["curvas"].items()}
+    todos = np.array([p for ls in niveles.values() for l in ls for p in l])
+    # margen amplio: más allá de la última curva el terreno sigue plano, y el
+    # borde queda lejos, dentro de la neblina
+    X0, Y0 = todos.min(0) - 60
+    X1, Y1 = todos.max(0) + 60
+    r = 3                                   # px por metro para las distancias
+    W, H = int((X1 - X0) * r) + 1, int((Y1 - Y0) * r) + 1
+    cotas = sorted(niveles)
+    dist = []
+    for cota in cotas:
+        img = np.full((H, W), 255, np.uint8)
+        for l in niveles[cota]:
+            pts = np.array([[(x - X0) * r, (Y1 - y) * r] for x, y in l], np.int32)
+            cv2.polylines(img, [pts], False, 0, 1)
+        dist.append(cv2.distanceTransform(img, cv2.DIST_L2, 5) / r)
+    dist = np.stack(dist)                       # (curvas, H, W)
+    orden = np.argsort(dist, axis=0)
+    i1, i2 = orden[0], orden[1]
+    d1 = np.take_along_axis(dist, i1[None], 0)[0]
+    d2 = np.take_along_axis(dist, i2[None], 0)[0]
+    z1, z2 = np.array(cotas)[i1], np.array(cotas)[i2]
+    z = (z1 * d2 + z2 * d1) / (d1 + d2 + 1e-6) - cfg["cotaN0"]
+    # malla de 1 m para la web
+    paso = 1.5
+    nx, ny = int((X1 - X0) / paso) + 1, int((Y1 - Y0) / paso) + 1
+    zz = cv2.resize(z.astype(np.float32), (nx, ny), interpolation=cv2.INTER_AREA)
+    print(f'    terreno: {len(cotas)} curvas ({cotas[0]}–{cotas[-1]}), malla {nx}×{ny} de {paso} m, '
+          f'z de {zz.min():.1f} a {zz.max():.1f} m respecto a N+0.0')
+    return {"x0": round(float(X0), 2), "y1": round(float(Y1), 2), "paso": paso, "nx": nx, "ny": ny,
+            "z": [round(float(v), 2) for v in zz.ravel()]}, (X0, Y1, paso, nx, ny, zz)
+
+
+def altura_en(malla, x, y):
+    X0, Y1, paso, nx, ny, zz = malla
+    i = min(max(int(round((Y1 - y) / paso)), 0), ny - 1)
+    j = min(max(int(round((x - X0) / paso)), 0), nx - 1)
+    return float(zz[i, j])
+
+
+def arboles(cfg, cx, cy, malla):
+    """Árboles y arbustos dibujados por la arquitecta: centro y copa de cada
+    símbolo. La altura no está en el plano (ver ALTO_ARBOL)."""
+    out = []
+    for pdf in cfg["arboles"]:
+        pg = pymupdf.open(f"C:/Users/maick/Downloads/{pdf}")[0]
+        M = pg.rotation_matrix
+        s = 10                                  # px por metro
+        W, H = int(pg.rect.width * K * s) + 1, int(pg.rect.height * K * s) + 1
+        for capas, tipo in ((("ARQ-ARBOL", "ARQ-ARBOL SOMBRA"), "arbol"), (("vegetacion",), "arbusto")):
+            img = np.zeros((H, W), np.uint8)
+            for d in pg.get_drawings():
+                if (d.get("layer") or "") in capas:
+                    r = d["rect"] * M
+                    cv2.rectangle(img, (int(r.x0 * K * s), int(r.y0 * K * s)), (int(r.x1 * K * s), int(r.y1 * K * s)), 255, -1)
+            img = cv2.dilate(img, np.ones((3, 3), np.uint8))
+            n, _, st, cen = cv2.connectedComponentsWithStats(img)
+            for i in range(1, n):
+                diam = (st[i][2] + st[i][3]) / 2 / s
+                if diam < 0.8 or diam > 9:
+                    continue
+                px_, py_ = cen[i] / s / K       # de vuelta a puntos PDF
+                x, y = (px_ - cx) * K, (cy - py_) * K
+                if any(math.dist((x, y), (a["x"], a["y"])) < 0.8 for a in out):
+                    continue                    # el mismo árbol en las dos hojas
+                z = altura_en(malla, x, y) if malla else 0
+                out.append({"t": tipo, "x": round(x, 2), "y": round(y, 2), "z": round(z, 2),
+                            "r": round(diam / 2, 2), "h": round(diam * ALTO_ARBOL, 2)})
+    print(f'    árboles: {sum(a["t"] == "arbol" for a in out)} · arbustos: {sum(a["t"] == "arbusto" for a in out)}')
+    return out
+
+
+def excavar(t, malla, niveles_):
+    """Bajo la huella de cada nivel el terreno no puede quedar por encima de
+    su placa de piso: ahí va la excavación (el corte B muestra el nivel de
+    abajo encajado en el talud, con muro de contención)."""
+    X0, Y1, paso, nx, ny, zz = malla
+    for n in niveles_:
+        tope = (n.get("z") or 0) - n["placa"]["grosor"]
+        img = np.zeros((ny, nx), np.uint8)
+        for poly in n.get("zocalo", []):
+            pts = np.array([[(x - X0) / paso, (Y1 - y) / paso] for x, y in poly[0]], np.int32)
+            cv2.fillPoly(img, [pts], 255)
+        img = cv2.dilate(img, np.ones((3, 3), np.uint8))
+        zz[img > 0] = np.minimum(zz[img > 0], tope)
+    t["z"] = [round(float(v), 2) for v in zz.ravel()]
+
+
+for modelo, cfg in ENTORNO.items():
+    cx, cy = ORIGEN[modelo]
+    t, malla = terreno(cfg, cx, cy)
+    excavar(t, malla, casas[modelo])
+    casas[modelo][0]["terreno"] = t
+    casas[modelo][0]["arboles"] = arboles(cfg, cx, cy, malla)
+    # pilotes: columnas del nivel más bajo que quedan por encima del terreno
+    bajo = min(casas[modelo], key=lambda n: n.get("z") or 0)
+    zb = (bajo.get("z") or 0) - bajo["placa"]["grosor"]
+    pil = []
+    for poly in bajo.get("solidos", []):
+        anillo = np.array(poly[0])
+        area = cv2.contourArea(anillo.astype(np.float32))
+        if area > 0.6:
+            continue                            # muros, no columnas
+        cxp, cyp = anillo.mean(0)
+        zt = altura_en(malla, cxp, cyp)
+        if zt < zb - 0.2:
+            # relativas al nivel, como el resto de su geometría
+            zn = bajo.get("z") or 0
+            pil.append({"poly": poly[0], "z0": round(zt - 0.3 - zn, 2), "z1": round(zb - zn, 2)})
+    bajo["pilotes"] = pil
+    print(f"    pilotes bajo el nivel inferior: {len(pil)}")
+
+
 cab = """/* ══════════════════════════════════════════════════
    GEOMETRÍA 3D DE LAS CASAS — generada, no editar a mano
    ══════════════════════════════════════════════════
@@ -889,6 +1087,8 @@ cab = """/* ══════════════════════�
      alturas de fachadas y cortes (ver VANOS en scripts/muros3d.py).
    ▸ `puertas`: hoja de cada puerta, de la bisagra a la punta (abierta).
    ▸ `placa`: cubierta plana, a la altura `z` y con su `grosor`.
+   ▸ `terreno`: malla de alturas (respecto a N+0.0) desde las curvas de
+     nivel; `arboles`: los del plano; `pilotes`: columnas hasta el terreno.
    ▸ `piso`:  silueta de la planta.
    ▸ `agua`:  piscina y jacuzzi, inundados desde el plano.
    ▸ `textura`: recorte del plano que se proyecta como piso, con su
