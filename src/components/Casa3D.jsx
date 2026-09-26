@@ -344,8 +344,8 @@ function terrenoLote(rel, lote, phi, dh) {
   for (let i = 0; i < ny; i++) for (let j = 0; j < nx; j++) {
     const k = i * nx + j, x = x0 + j * paso, y = y1 - i * paso;
     pos.set([x, z[k], -y], k * 3);
-    uv.set([x / 7, y / 7], k * 2);
-    const c = dentroDe([x, y], lote.poly) ? 1 : 0.62;
+    uv.set(rel.sat ? [j / (nx - 1), 1 - i / (ny - 1)] : [x / 7, y / 7], k * 2);
+    const c = rel.sat || dentroDe([x, y], lote.poly) ? 1 : 0.62;
     col.set([c, c, c], k * 3);
   }
   const idx = [];
@@ -371,8 +371,8 @@ function terrenoLote(rel, lote, phi, dh) {
 }
 
 /* lindero del lote: una cinta que sigue el terreno */
-function geometriaLindero(poly, alturaEn) {
-  const pos = [], ancho = 0.14;
+function geometriaLindero(poly, alturaEn, ancho = 0.14) {
+  const pos = [];
   for (let i = 0; i < poly.length - 1; i++) {
     const [ax, ay] = poly[i], [bx, by] = poly[i + 1];
     const l = Math.hypot(bx - ax, by - ay), nxv = -(by - ay) / l * ancho, nyv = (bx - ax) / l * ancho;
@@ -771,7 +771,8 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)", lot
     sc.near = 0.5; sc.far = radio * 12;
     sc.updateProjectionMatrix();
 
-    escena.fog = new THREE.Fog(0xB9C4CF, radio * 3, radio * 9);
+    /* en un lote el terreno termina a ~60 m: la neblina esconde el borde */
+    escena.fog = lote ? new THREE.Fog(0xB9C4CF, radio * 1.8, radio * 3.4) : new THREE.Fog(0xB9C4CF, radio * 3, radio * 9);
 
     /* cielo real (Poly Haven, CC0): ilumina la escena y hace de fondo */
     let cielo = null, fondo = null;
@@ -903,6 +904,10 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)", lot
 
     const matLindero = new THREE.MeshBasicMaterial({ color: 0xE5BC8B, side: THREE.DoubleSide });
     const lindero = new THREE.Mesh(new THREE.BufferGeometry(), matLindero);
+    const matVecinos = new THREE.MeshBasicMaterial({ color: 0xF4EFE6, transparent: true, opacity: 0.75, side: THREE.DoubleSide });
+    const vecinos = new THREE.Mesh(new THREE.BufferGeometry(), matVecinos);
+    if (lote) escena.add(vecinos);
+    let texSat = null;
     const collar = new THREE.Mesh(new THREE.BufferGeometry(), matPiedra);
     collar.receiveShadow = true;
     if (lote) { escena.add(lindero); pivote.add(collar); }
@@ -915,6 +920,38 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)", lot
       const t = terrenoLote(rel, lote, phi, dh);
       pasto.geometry.dispose(); pasto.geometry = t.g;
       lindero.geometry.dispose(); lindero.geometry = geometriaLindero(lote.poly, t.alturaEn);
+      /* la foto satelital del lugar como suelo, y los linderos vecinos */
+      if (rel.sat && !texSat) {
+        texSat = new THREE.CanvasTexture(rel.sat);
+        texSat.colorSpace = THREE.SRGBColorSpace;
+        texSat.anisotropy = 8;
+        /* la foto (~0,6 m por píxel, lo máximo que hay para la zona) da el color
+           y la forma del lugar; encima, el césped fotográfico repetido da el
+           grano de cerca: sin él, la foto se ve borrosa al acercarse */
+        const m = new THREE.MeshStandardMaterial({ map: texSat, roughness: 1, metalness: 0,
+          normalMap: pbr.pasto.normalMap, normalScale: new THREE.Vector2(0.6, 0.6) });
+        const detalle = pbr.pasto.map, rep = ((rel.nx - 1) * rel.paso) / 3.5;
+        m.onBeforeCompile = (sh) => {
+          sh.uniforms.detalle = { value: detalle };
+          sh.uniforms.rep = { value: rep };
+          sh.fragmentShader = `uniform sampler2D detalle;
+uniform float rep;
+` + sh.fragmentShader.replace(
+            "#include <map_fragment>",
+            `#include <map_fragment>
+            vec3 d = texture2D(detalle, vMapUv * rep).rgb;
+            float l = dot(d, vec3(0.299, 0.587, 0.114));
+            // la foto solo tiñe (color medio de cada zona); el grano es del césped
+            vec3 foto = diffuseColor.rgb;
+            float lf = dot(foto, vec3(0.299, 0.587, 0.114));
+            vec3 grano = d / max(l, 0.05) * lf;
+            diffuseColor.rgb = mix(foto, grano * mix(vec3(1.0), foto / max(lf, 0.05), 0.55), 0.75);`);
+        };
+        pasto.material = m;
+      }
+      const otros = (rel.vecinos ?? []).map((p) => geometriaLindero(p, t.alturaEn, 0.07));
+      vecinos.geometry.dispose();
+      vecinos.geometry = otros.length ? mergeGeometries(otros) : new THREE.BufferGeometry();
       const c = dh.hueco.length ? geometriaCollar(dh.hueco, dh.nivelExt) : null;
       collar.geometry.dispose(); collar.geometry = c ?? new THREE.BufferGeometry();
       const puntos = [...dh.huellas.flatMap((h) => h.polys), ...dh.exterior].flat();
@@ -933,7 +970,8 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)", lot
       render.domElement.removeEventListener("wheel", parar);
       ctrl.dispose();
       compositor.dispose();
-      matLindero.dispose();
+      matLindero.dispose(); matVecinos.dispose();
+      if (texSat) { texSat.dispose(); pasto.material.dispose(); }
       matTronco.dispose(); matCopas.forEach((m) => m.dispose());
       render.dispose();
       cielo?.dispose(); fondo?.dispose();
