@@ -1025,3 +1025,6 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58vh, 620px)", lot
     </div>
   );
 }
+
+/* la misma geometría sirve para poner la casa en el mapa (src/casaEnMapa.js) */
+export { ALTO_NIVEL, aTres, forma, extruir, tramo, geometriaVanos };

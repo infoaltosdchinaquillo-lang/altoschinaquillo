@@ -12,7 +12,7 @@ const TABS = [
   { k: "valor",  l: "Valorización" },
 ];
 
-export default function LotModal({ lot, onClose, onCompare, inCompare }) {
+export default function LotModal({ lot, onClose, onCompare, inCompare, onVerEnMapa }) {
   const [tab, setTab] = useState("info");
   const [mo, setMo] = useState(PLAN.meses);
   const [img, setImg] = useState(0);
@@ -175,7 +175,7 @@ export default function LotModal({ lot, onClose, onCompare, inCompare }) {
               {tab === "casa" && (
                 <Suspense fallback={<div className="glass" style={{ height: 320, display: "grid", placeItems: "center" }}>
                   <span className="meta">Levantando la casa sobre el lote…</span></div>}>
-                  <CasaEnLote lot={lot} />
+                  <CasaEnLote lot={lot} onVerEnMapa={onVerEnMapa} />
                 </Suspense>
               )}
 

@@ -3,6 +3,8 @@ import { MapLibreMap, NavigationControl, Popup, setWorkerUrl } from "maplibre-gl
 import "maplibre-gl/dist/maplibre-gl.css";
 import { LOTES_GEO, PREDIO, RESERVA, ZONAS_VERDES } from "../lotesGeo";
 import { MODELOS } from "../data";
+import { CASAS_3D } from "../casas3d";
+import { loteLocal, relieve } from "../loteTerreno";
 
 /* ══════════════════════════════════════════════════
    MAPA DEL LOTEO — lotes reales sobre el relieve 3D
@@ -111,25 +113,11 @@ function encuadre(map, modo) {
   return { center, zoom: Math.max(ZOOM_MIN, zoom - (pitch ? 0.3 : 0)), bearing, pitch };
 }
 
-/* ── La casa sobre el lote ──────────────────────
-   Dibuja la huella real de un modelo, a escala, parada sobre el punto
-   interior del lote. El eje largo va paralelo a las curvas de nivel
-   (perpendicular a la subida), que es como se implanta una casa en
-   ladera. La ubicación exacta dentro del lote la define el diseño:
-   esto sirve para ver tamaño, proporción y pendiente, no para replantear. */
-const RUMBO_CASA = (EJE_LOTEO + 90) * Math.PI / 180;
-
-function huellaCasa(centro, huella) {
-  const [lng, lat] = centro;
-  const kx = 111320 * Math.cos((lat * Math.PI) / 180), ky = 110574;
-  const L = huella.largo / 2, A = huella.ancho / 2;
-  const cos = Math.cos(RUMBO_CASA), sin = Math.sin(RUMBO_CASA);
-  const esquinas = [[-L, -A], [L, -A], [L, A], [-L, A], [-L, -A]];
-  return esquinas.map(([x, y]) => {
-    const e = x * cos - y * sin, n = x * sin + y * cos;
-    return [lng + e / kx, lat + n / ky];
-  });
-}
+const botonCasa = (activo) => ({
+  padding: "7px 12px", fontSize: 12, cursor: "pointer", border: "none", borderRadius: 999,
+  background: activo ? "linear-gradient(150deg,#E5BC8B,#C99A63)" : "rgba(255,255,255,0.07)",
+  color: activo ? "#17110B" : "#D8CFC3",
+});
 
 /* Contenido de la ficha flotante: HTML plano, porque vive dentro de MapLibre y no de React */
 function htmlPopup(lot, altura) {
@@ -148,7 +136,8 @@ export default function Terrain3D({
   onHover,
   onSelect,
   basemap = "sat",
-  casaModelo = null,
+  casaLote = null,        // { lot, modelo, giro }: la maqueta puesta en un lote
+  onCasaLote,
   exageracion = 1.6,
   onAlturas,
   alto = "72vh",
@@ -161,7 +150,6 @@ export default function Terrain3D({
   const cbRef = useRef({});
   const [listo, setListo] = useState(false);
   const [vista, setVista] = useState("3d");
-  const [casa, setCasa] = useState(casaModelo);
 
   /* callbacks y lotes siempre frescos sin recrear el mapa */
   cbRef.current = { onHover, onSelect, onAlturas, lots };
@@ -202,7 +190,6 @@ export default function Terrain3D({
             data: { type: "FeatureCollection", features: [RESERVA, ...ZONAS_VERDES].map((r) => poligono(r)) },
           },
           lotes: { type: "geojson", data: { type: "FeatureCollection", features: [] } },
-          casa: { type: "geojson", data: { type: "FeatureCollection", features: [] } },
           nombres: { type: "geojson", data: { type: "FeatureCollection", features: [] } },
         },
         layers: [
@@ -249,12 +236,6 @@ export default function Terrain3D({
                 ["case", ["get", "vendido"], 0.4, 0.9], 18,
                 ["case", ["get", "vendido"], 1.0, 2.4]],
               "line-opacity": ["case", ["get", "vendido"], 0.45, 0.95],
-            } },
-          { id: "casa", type: "fill-extrusion", source: "casa",
-            paint: {
-              "fill-extrusion-color": "#F2EBE0",
-              "fill-extrusion-height": ["get", "altura"],
-              "fill-extrusion-opacity": 0.92,
             } },
           { id: "predio-borde", type: "line", source: "predio",
             paint: { "line-color": "#C99A63", "line-width": ["interpolate", ["linear"], ["zoom"], 15, 1.5, 18, 3.5] } },
@@ -350,6 +331,7 @@ export default function Terrain3D({
     map.on("load", () => {
       map.jumpTo(encuadre(map, "3d"));
       mapRef.current = map;
+      if (import.meta.env.DEV) window.__mapa = map;
       setListo(true);
     });
 
@@ -398,20 +380,52 @@ export default function Terrain3D({
     map.setLayoutProperty("sat", "visibility", basemap === "sat" ? "visible" : "none");
   }, [basemap, listo]);
 
-  /* ── la casa sobre el lote activo ─────────────── */
+  /* ── la maqueta de la casa en el lote elegido ────
+     Primero se vuela al lote (el relieve de alrededor tiene que estar
+     cargado para saber a qué altura va la casa), después se pone. */
+  const [casaMsg, setCasaMsg] = useState("");
+  const loteCasaRef = useRef(null);
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !listo) return;
-    const lote = selected ?? hovered;
-    const modelo = MODELOS.find((x) => x.id === casa);
-    const geo = lote && LOTES_GEO[lote.id];
-    map.getSource("casa").setData({
-      type: "FeatureCollection",
-      features: modelo && geo
-        ? [poligono(huellaCasa(geo.label, modelo.huella), { altura: modelo.huella.altura })]
-        : [],
-    });
-  }, [casa, hovered, selected, listo]);
+    let vivo = true;
+    /* con la casa puesta, los lotes se vuelven casi transparentes: se ve el
+       satélite y la casa se lee sobre el terreno real; quedan los linderos */
+    map.setPaintProperty("lotes-relleno", "fill-opacity", casaLote ? 0.06 : [
+      "case",
+      ["boolean", ["feature-state", "activo"], false], C.ACTIVO_OP,
+      ["get", "vendido"], C.VENDIDO_OP,
+      C.DISPONIBLE_OP,
+    ]);
+    if (!casaLote) {
+      loteCasaRef.current = null;
+      import("../casaEnMapa").then((m) => vivo && m.quitarCasa(map));
+      return () => { vivo = false; };
+    }
+    const geo = LOTES_GEO[casaLote.lot.id];
+    const lote = loteLocal(casaLote.lot.id);
+    if (!geo || !lote) return;
+    const nuevoLote = loteCasaRef.current !== casaLote.lot.id;
+    loteCasaRef.current = casaLote.lot.id;
+    setCasaMsg(nuevoLote ? "Llevando la casa al lote…" : "");
+    Promise.all([import("../casaEnMapa"), relieve(lote)]).then(([m, rel]) => {
+      if (!vivo) return;
+      /* el frente de la casa (sur del plano) mira a la bajada del lote */
+      const phi = rel.bajada + Math.PI / 2 + (casaLote.giro * Math.PI) / 180;
+      const poner = () => {
+        if (!vivo) return;
+        m.ponerCasa(map, { modelo: casaLote.modelo, centro: geo.label, phi, antes: "nombres-punto" });
+        setCasaMsg("");
+      };
+      if (!nuevoLote) { poner(); return; }
+      /* la cámara se para ladera abajo mirando la casa y la subida */
+      const rumbo = 90 - ((rel.bajada + Math.PI) * 180) / Math.PI;
+      setVista("3d");
+      map.easeTo({ center: geo.label, zoom: 19.6, pitch: 60, bearing: rumbo, duration: 2200 });
+      map.once("idle", poner);
+    }).catch(() => vivo && setCasaMsg("No se pudo cargar el relieve del lote. Intenta de nuevo."));
+    return () => { vivo = false; };
+  }, [casaLote, listo]);
 
   /* ── resaltado + ficha flotante ───────────────── */
   useEffect(() => {
@@ -466,26 +480,28 @@ export default function Terrain3D({
         ))}
       </div>
 
-      {/* Ver una casa sobre el lote */}
-      <div className="glass-pill" style={{ position: "absolute", top: 14, right: 62, zIndex: 5, padding: "4px 6px" }}>
-        <select value={casa ?? ""} onChange={(e) => setCasa(e.target.value || null)}
-          aria-label="Ver una casa sobre el lote"
-          style={{ background: "transparent", border: "none", outline: "none", color: casa ? "#E5BC8B" : "#A29686",
-            fontFamily: "inherit", fontSize: 12, padding: "6px 8px", cursor: "pointer", maxWidth: 160 }}>
-          <option value="" style={{ background: "#171310" }}>Ver una casa aquí</option>
-          {MODELOS.map((x) => (
-            <option key={x.id} value={x.id} style={{ background: "#171310" }}>{x.nombre}</option>
-          ))}
-        </select>
-      </div>
-
-      {casa && (
-        <div className="glass-pill" style={{ position: "absolute", top: 58, right: 62, zIndex: 5, padding: "8px 14px", maxWidth: 210 }}>
-          <span className="meta" style={{ fontSize: 11.5 }}>
-            {selected || hovered
-              ? "Casa a escala real sobre el lote. La ubicación dentro del lote es referencial."
-              : "Pasa el cursor sobre un lote para ver la casa ahí."}
-          </span>
+      {/* La casa puesta en un lote */}
+      {casaLote && (
+        <div className="glass-panel" style={{ position: "absolute", top: 62, left: 14, zIndex: 6, padding: "12px 14px",
+          maxWidth: "min(330px, calc(100% - 28px))", borderRadius: 18 }}>
+          <div style={{ fontSize: 13.5, color: "#E8DFD3", marginBottom: 8 }}>
+            {MODELOS.find((m) => m.id === casaLote.modelo)?.nombre} en el lote {casaLote.lot.name}
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+            {MODELOS.filter((m) => CASAS_3D[m.id]).map((m) => (
+              <button key={m.id} onClick={() => onCasaLote?.({ ...casaLote, modelo: m.id })}
+                style={botonCasa(casaLote.modelo === m.id)}>{m.nombre}</button>
+            ))}
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            <button onClick={() => onCasaLote?.({ ...casaLote, giro: casaLote.giro - 15 })} style={botonCasa(false)}>↺ Girar</button>
+            <button onClick={() => onCasaLote?.({ ...casaLote, giro: 0 })} style={botonCasa(casaLote.giro === 0)}>Frente al valle</button>
+            <button onClick={() => onCasaLote?.({ ...casaLote, giro: casaLote.giro + 15 })} style={botonCasa(false)}>Girar ↻</button>
+            <button onClick={() => onCasaLote?.(null)} style={botonCasa(false)}>Quitar</button>
+          </div>
+          <p className="meta" style={{ fontSize: 11, marginTop: 8, lineHeight: 1.45 }}>
+            {casaMsg || "Ubicación ilustrativa. El relieve del mapa va exagerado para leer la pendiente; la casa va a escala real."}
+          </p>
         </div>
       )}
 

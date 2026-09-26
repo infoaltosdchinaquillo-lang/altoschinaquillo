@@ -18,7 +18,7 @@ const pill = (activo) => ({
   color: activo ? "#17110B" : "#A29686",
 });
 
-export default function CasaEnLote({ lot }) {
+export default function CasaEnLote({ lot, onVerEnMapa }) {
   const con3d = MODELOS.filter((m) => CASAS_3D[m.id]);
   const [modelo, setModelo] = useState(con3d[0]?.id);
   const [giro, setGiro] = useState(0);
@@ -40,6 +40,13 @@ export default function CasaEnLote({ lot }) {
 
   return (
     <div>
+      {onVerEnMapa && (
+        <button onClick={() => onVerEnMapa(modelo, giro)}
+          style={{ width: "100%", marginBottom: 14, padding: "13px 18px", border: "none", borderRadius: 14, cursor: "pointer",
+            fontSize: 14, fontWeight: 600, color: "#17110B", background: "linear-gradient(150deg,#E5BC8B,#C99A63)" }}>
+          Verla puesta en el mapa del proyecto
+        </button>
+      )}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginBottom: 14 }}>
         <div className="glass-pill" style={{ display: "flex", gap: 3, padding: 4 }}>
           {con3d.map((m) => (

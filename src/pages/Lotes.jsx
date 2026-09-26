@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useMemo } from "react";
+import { lazy, Suspense, useState, useMemo, useRef } from "react";
 import { LOTS, TOTAL, SOLD, AVAIL, AREA_MIN, AREA_MAX, TERRENO, cop, wa, planPago, proyectar, VALORIZACION_NOTA } from "../data";
 import { IconWa, IconClose, useReveal } from "../components/ui";
 import LotModal from "../components/LotModal";
@@ -20,6 +20,8 @@ export default function Lotes() {
   const [orden, setOrden] = useState("precio-asc");
   const [hovered, setHovered] = useState(null);
   const [modal, setModal] = useState(null);
+  const [casaLote, setCasaLote] = useState(null);     // { lot, modelo, giro }
+  const mapaRef = useRef(null);
   const [compare, setCompare] = useState([]);
   const [showCompare, setShowCompare] = useState(false);
 
@@ -124,7 +126,7 @@ export default function Lotes() {
 
           {/* Grid */}
           <div className="lt-grid">
-            <div className="lt-map">
+            <div className="lt-map" ref={mapaRef}>
               <Suspense
                 fallback={
                   <div className="glass" style={{ height: "min(78vh, 760px)", display: "grid", placeItems: "center" }}>
@@ -132,6 +134,7 @@ export default function Lotes() {
                   </div>
                 }>
                 <Terrain3D lots={LOTS} hovered={hovered} selected={modal} onHover={setHovered} onSelect={setModal}
+                  casaLote={casaLote} onCasaLote={setCasaLote}
                   alto="min(78vh, 760px)" />
               </Suspense>
               <p className="meta" style={{ marginTop: 12, fontSize: 12.5 }}>
@@ -165,6 +168,11 @@ export default function Lotes() {
 
       {modal && (
         <LotModal lot={modal} onClose={() => setModal(null)}
+          onVerEnMapa={(modelo, giro) => {
+            setCasaLote({ lot: modal, modelo, giro });
+            setModal(null);
+            mapaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+          }}
           onCompare={toggleCompare} inCompare={compare.some((x) => x.id === modal.id)} />
       )}
 
