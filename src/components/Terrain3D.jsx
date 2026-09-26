@@ -7,6 +7,9 @@ import { CASAS_3D } from "../casas3d";
 import { loteLocal, relieve } from "../loteTerreno";
 import { menosMovimiento } from "./ui";
 
+/* pantalla táctil (celular o tableta) */
+const TACTIL = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
+
 /* duración de un movimiento de cámara: 0 si el teléfono pide menos movimiento */
 const dur = (ms) => (menosMovimiento() ? 0 : ms);
 
@@ -165,7 +168,9 @@ export default function Terrain3D({
     const map = new MapLibreMap({
       container: boxRef.current,
       attributionControl: { compact: true },
-      cooperativeGestures: true,
+      /* En computador, Ctrl + rueda para acercar: la rueda sola sigue bajando
+         la página. En celular el mapa se mueve con un dedo, sin pedir dos. */
+      cooperativeGestures: !TACTIL,
       maxPitch: 78,
       minZoom: ZOOM_MIN,
       center: [-72.5935, 7.5892],
@@ -467,7 +472,8 @@ export default function Terrain3D({
 
   return (
     <div className="glass" style={{ position: "relative", padding: 0, overflow: "hidden" }}>
-      <div ref={boxRef} style={{ width: "100%", height: alto, background: "var(--fondo)" }} />
+      <div ref={boxRef} /* en celular el mapa deja espacio por debajo para desplazar la página con el dedo */
+        style={{ width: "100%", height: TACTIL ? `min(${alto}, 64svh)` : alto, background: "var(--fondo)" }} />
 
       {/* Vista 3D / plano */}
       <div className="glass-pill" style={{ position: "absolute", top: 14, left: 14, zIndex: 5, display: "flex", gap: 3, padding: 4 }}>

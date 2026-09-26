@@ -545,6 +545,11 @@ input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px rgba
   button:not(.maplibregl-ctrl button) { min-width: 44px; }
 }
 
+/* La página no se amplía con dos dedos ni con doble toque: ese gesto es
+   del mapa y de la maqueta 3D, que lo manejan ellos (por dentro usan
+   touch-action: none y reciben el gesto completo). */
+html { touch-action: pan-x pan-y; }
+
 /* El teléfono pide menos movimiento: sin animaciones ni transiciones */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
