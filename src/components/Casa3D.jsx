@@ -146,30 +146,6 @@ const COLOR_MUEBLE = {
   sanitario: 0xF6F5F2, meson: 0x5E5954,
 };
 
-/* azulejo verde agua de la piscina, como en el render de la arquitecta */
-function texturaAzulejo() {
-  const c = document.createElement("canvas");
-  c.width = c.height = 256;
-  const g = c.getContext("2d");
-  const n = 4, l = 256 / n;
-  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
-    const v = Math.random() * 18 - 9;
-    g.fillStyle = `rgb(${88 + v},${166 + v},${150 + v})`;
-    g.fillRect(i * l, j * l, l, l);
-  }
-  g.strokeStyle = "rgba(235,240,232,0.85)";
-  g.lineWidth = 3;
-  for (let k = 0; k <= n; k++) {
-    g.beginPath(); g.moveTo(k * l, 0); g.lineTo(k * l, 256); g.stroke();
-    g.beginPath(); g.moveTo(0, k * l); g.lineTo(256, k * l); g.stroke();
-  }
-  const t = new THREE.CanvasTexture(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(2.5, 2.5);             // 4 piezas cada 0,40 m
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
-}
-
 /* ── Casas leídas por capas (ver scripts/muros3d.py) ──
    `solidos`: planta de muros y columnas con sus huecos interiores.
    `vanos`:   ventanas, persianas y puertas macizas, con las alturas de
@@ -541,20 +517,27 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58svh, 620px)", lo
     const pbr = {
       // muros lisos color crema, como el render (el concreto en bloque se
       // leía como ladrillo)
-      // muro_color y piso_color son el mismo concreto aclarado y con menos
+      // piso_color es el concreto de Poly Haven aclarado y con menos
       // contraste (ver public/texturas/LEEME.txt)
-      muro: texturaPBR(cargadorTex, "concrete_floor_02", 3, "muro_color"),
+      // el color del muro y de la madera se generaron con Higgsfield (ver
+      // public/texturas/LEEME.txt); el relieve sigue siendo el de Poly Haven
+      muro: texturaPBR(cargadorTex, "concrete_floor_02", 3, "hf_muro_color"),
       piso: texturaPBR(cargadorTex, "concrete_floor_02", 2, "piso_color"),
-      deck: texturaPBR(cargadorTex, "brown_planks_03", 2),
+      deck: texturaPBR(cargadorTex, "brown_planks_03", 2.4, "hf_madera_color"),
       piedra: texturaPBR(cargadorTex, "grey_cartago_01", 1.2),
       pasto: texturaPBR(cargadorTex, "aerial_grass_rock", 7),
     };
     const texturasPBR = Object.values(pbr).flatMap((p) => Object.values(p));
-    const matConcreto = new THREE.MeshStandardMaterial({ ...pbr.muro, color: 0xF6ECDD, roughness: 1, metalness: 0, normalScale: new THREE.Vector2(0.35, 0.35) });
+    const matConcreto = new THREE.MeshStandardMaterial({ ...pbr.muro, color: 0xFFF6EA, roughness: 1, metalness: 0, normalScale: new THREE.Vector2(0.35, 0.35) });
     // transparente desde el principio: cambiarlo en caliente obliga a recompilar
     const matPlaca = new THREE.MeshStandardMaterial({ ...pbr.muro, color: 0xE9E2D6, roughness: 1, metalness: 0, transparent: true, normalScale: new THREE.Vector2(0.35, 0.35) });
     const matMarco = new THREE.MeshStandardMaterial({ color: 0x1C1C1C, roughness: 0.45, metalness: 0.6 });
-    const matMadera = new THREE.MeshStandardMaterial({ map: texMadera, roughness: 0.7, metalness: 0 });
+    /* persianas y puertas: la misma madera del deck, una veta por pieza */
+    const texMaderaHF = cargadorTex.load(`${TEX}hf_madera_color.jpg`);
+    texMaderaHF.colorSpace = THREE.SRGBColorSpace;
+    texMaderaHF.wrapS = texMaderaHF.wrapT = THREE.RepeatWrapping;
+    texMaderaHF.repeat.set(0.35, 1);
+    const matMadera = new THREE.MeshStandardMaterial({ map: texMaderaHF, roughness: 0.75, metalness: 0 });
     const matVidrio = new THREE.MeshStandardMaterial({
       color: 0x9DB4BA, roughness: 0.04, metalness: 0.2, envMapIntensity: 1.4,
       transparent: true, opacity: 0.32, depthWrite: false,
@@ -567,15 +550,21 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58svh, 620px)", lo
     const texPisoInt = texturaRuido({ base: "#D9D3C9", grano: 6, escala: 3 });
     const texDeck = texturaRuido({ base: "#7A4E30", grano: 12, escala: 1, lineas: 6 });
     texDeck.repeat.set(1.2, 1.2);
-    const texAzulejo = texturaAzulejo();
+    /* mosaico de 2,5 cm: una imagen cubre unos 0,6 m */
+    const texAzulejo = cargadorTex.load(`${TEX}hf_azulejo_color.jpg`);
+    texAzulejo.colorSpace = THREE.SRGBColorSpace;
+    texAzulejo.wrapS = texAzulejo.wrapT = THREE.RepeatWrapping;
+    texAzulejo.repeat.set(1 / 0.6, 1 / 0.6);
+    texAzulejo.anisotropy = 8;
     // las formas planas quedan mirando hacia abajo al acostarlas: dos caras
     const matPisoInt = new THREE.MeshStandardMaterial({ ...pbr.piso, color: 0xFFFFFF, roughness: 0.7, metalness: 0, side: THREE.DoubleSide });
-    const matDeck = new THREE.MeshStandardMaterial({ ...pbr.deck, color: 0xD9955C, roughness: 1, metalness: 0 });
+    const matDeck = new THREE.MeshStandardMaterial({ ...pbr.deck, normalMap: null, roughness: 0.9, metalness: 0 });
     const matPiedra = new THREE.MeshStandardMaterial({ ...pbr.piedra, color: 0xE8E2D8, roughness: 1, metalness: 0 });
-    const matAzulejo = new THREE.MeshStandardMaterial({ map: texAzulejo, roughness: 0.3, metalness: 0 });
+    const matAzulejo = new THREE.MeshStandardMaterial({ map: texAzulejo, roughness: 0.25, metalness: 0 });
     const matEspejo = new THREE.MeshStandardMaterial({
-      color: 0x5FC0BE, roughness: 0.03, metalness: 0.1, envMapIntensity: 1.6,
-      transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide,
+      // agua más transparente: se deja ver el mosaico del fondo y las paredes
+      color: 0x4FB8B6, roughness: 0.03, metalness: 0.1, envMapIntensity: 1.2,
+      transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide,
     });
     const matMuebles = Object.fromEntries(Object.entries(COLOR_MUEBLE).map(([k, c]) => [k,
       new THREE.MeshStandardMaterial({ color: c, roughness: k === "sanitario" || k === "lavamanos" ? 0.25 : 0.8, metalness: 0 })]));
@@ -981,7 +970,7 @@ uniform float rep;
       matMuro.dispose(); matPiso.dispose(); matPasto.dispose(); matAgua.dispose();
       for (const m of [matConcreto, matPlaca, matMarco, matMadera, matVidrio, matPisoInt, matDeck,
         matPiedra, matAzulejo, matEspejo, ...Object.values(matMuebles)]) m.dispose();
-      for (const t of [texConcreto, texMadera, texPisoInt, texDeck, texAzulejo]) t.dispose();
+      for (const t of [texConcreto, texMadera, texMaderaHF, texPisoInt, texDeck, texAzulejo]) t.dispose();
       for (const pl of pisos) { pl.mat.dispose(); pl.tex.dispose(); }
       texMuro.dispose(); texPiso.dispose(); texPasto.dispose();
       pmrem.dispose();
