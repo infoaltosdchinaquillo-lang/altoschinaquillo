@@ -1,6 +1,9 @@
 import { lazy, Suspense, useState, useMemo, useRef } from "react";
 import { LOTS, TOTAL, SOLD, AVAIL, AREA_MIN, AREA_MAX, TERRENO, cop, wa, planPago, proyectar, VALORIZACION_NOTA } from "../data";
 import { IconWa, IconClose, useReveal, useDialogo, useLockScroll, menosMovimiento } from "../components/ui";
+
+/* pantalla táctil: el texto de ayuda no habla de cursor ni de clic */
+const TACTIL = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
 import LotModal from "../components/LotModal";
 
 /* MapLibre pesa ~250 KB gzip: se descarga solo al entrar a esta página */
@@ -57,7 +60,9 @@ export default function Lotes() {
             Elige tu <span className="serif-em">lote</span>
           </h1>
           <p className="lead" style={{ marginTop: 24, maxWidth: 560 }}>
-            Pasa el cursor sobre un lote para verlo en la montaña. Haz click para ver fotos, financiación y proyección de valorización.
+            {TACTIL
+              ? "Toca un lote en el mapa o en la lista para ver sus fotos, la financiación, la proyección de valorización y cómo queda tu casa en él."
+              : "Pasa el cursor sobre un lote para verlo en la montaña. Haz clic para ver fotos, financiación, proyección de valorización y cómo queda tu casa en él."}
           </p>
 
           <div style={{ display: "flex", gap: 28, flexWrap: "wrap", marginTop: 32 }}>

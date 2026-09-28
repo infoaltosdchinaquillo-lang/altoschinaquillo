@@ -337,6 +337,10 @@ export default function Terrain3D({
     map.on("movestart", (e) => { if (e.originalEvent) tocado = true; });
     map.once("idle", () => { if (!tocado) map.jumpTo(encuadre(map, "3d")); });
 
+    /* con el dedo el mapa frena más rápido al soltarlo: en 520 px de alto,
+       la inercia por defecto lo lanzaba varias veces más lejos que el gesto */
+    if (TACTIL) map.dragPan.enable({ linearity: 0.25, deceleration: 4200, maxSpeed: 900 });
+
     map.on("load", () => {
       map.jumpTo(encuadre(map, "3d"));
       mapRef.current = map;
