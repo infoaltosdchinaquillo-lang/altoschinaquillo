@@ -11,6 +11,7 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { CASAS_3D } from "../casas3d";
 import { dentroDe } from "../loteTerreno";
 import { menosMovimiento } from "./ui";
+import { armarMuebles } from "../muebles3d";
 
 /* ══════════════════════════════════════════════════
    MAQUETA 3D DE LA CASA
@@ -466,6 +467,8 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58svh, 620px)", lo
   const escenaRef = useRef(null);
   const [nivel, setNivel] = useState("todo");
   const [techo, setTecho] = useState(true);
+  const [foto, setFoto] = useState(null);     // { estado, muestras, total }
+  const tactil = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
   const [listo, setListo] = useState(false);
 
   const niveles = CASAS_3D[modelo] ?? [];
@@ -483,7 +486,7 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58svh, 620px)", lo
     render.setSize(cont.clientWidth, cont.clientHeight);
     render.toneMapping = THREE.ACESFilmicToneMapping;
     render.shadowMap.enabled = true;
-    render.shadowMap.type = THREE.PCFSoftShadowMap;
+    render.shadowMap.type = THREE.PCFShadowMap;
     cont.appendChild(render.domElement);
 
     /* luz de entorno: sin esto los materiales se ven planos */
@@ -497,6 +500,8 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58svh, 620px)", lo
     sol.castShadow = true;
     sol.shadow.mapSize.set(2048, 2048);
     sol.shadow.bias = -0.0006;
+    sol.shadow.radius = 4;          // borde de la sombra difuminado
+    sol.shadow.normalBias = 0.02;
     escena.add(sol);
     escena.add(sol.target);
 
@@ -539,10 +544,11 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58svh, 620px)", lo
     texMaderaHF.repeat.set(0.35, 1);
     const matMadera = new THREE.MeshStandardMaterial({ map: texMaderaHF, roughness: 0.75, metalness: 0 });
     const matVidrio = new THREE.MeshStandardMaterial({
-      color: 0x9DB4BA, roughness: 0.04, metalness: 0.2, envMapIntensity: 1.4,
-      transparent: true, opacity: 0.32, depthWrite: false,
+      color: 0x9DB4BA, roughness: 0.02, metalness: 0.35, envMapIntensity: 2.2,
+      transparent: true, opacity: 0.3, depthWrite: false,
     });
     const techos = [];
+    const limpiezas = [];
     const estado = { techo: true, opacidad: -1, hora: "dia" };
     /* interior: concreto pulido claro (corte B); exterior: deck de madera,
        piedra de los pasos, azulejo verde de la piscina (render de la
@@ -644,9 +650,9 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58svh, 620px)", lo
         for (const pl of lote ? [] : n.pilotes ?? []) sombra(new THREE.Mesh(extruir([[pl.poly]], pl.z0, pl.z1 - pl.z0), matConcreto));
 
         /* muebles: planta y tamaño del plano; altura estándar */
-        const porTipo = {};
-        for (const m of n.muebles ?? []) (porTipo[m.t] ??= []).push(extruir([[m.poly]], 0, m.h));
-        for (const [t, geos] of Object.entries(porTipo)) sombra(new THREE.Mesh(mergeGeometries(geos), matMuebles[t]));
+        const mb = armarMuebles(n.muebles ?? [], n.solidos, cargadorTex, TEX);
+        g.add(mb.grupo);
+        limpiezas.push(mb.dispose);
       }
       if (ext) {
         const nv = ext.nivel;
@@ -746,7 +752,49 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58svh, 620px)", lo
           z: nv, r: d / 2, h: d * 1.3 });
       }
     }
-    const ga = geometriaArboles(arboles);
+    /* Árboles: foto recortada que gira hacia la cámara (Higgsfield, ver
+       public/texturas/LEEME.txt); de lejos se leen como árboles reales y
+       pesan 700 KB los tres. Los arbustos siguen siendo volumen. */
+    const ESPECIES = [
+      { img: "arbol_guayacan", alto: 1.35 },   // alto = × diámetro de copa
+      { img: "arbol_saman", alto: 0.75 },
+      { img: "arbol_yarumo", alto: 2.2 },
+    ];
+    const vallas = [];
+    const texArboles = ESPECIES.map((e) => {
+      const t = cargadorTex.load(`${TEX}${e.img}.png`, (tt) => {
+        /* el ancho sale de la proporción de la foto */
+        for (const v of vallas) if (v.userData.tex === tt) {
+          const asp = tt.image.width / tt.image.height;
+          v.scale.x = v.scale.y * asp;
+        }
+      });
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = 4;
+      return t;
+    });
+    const matArboles = texArboles.map((map) => new THREE.MeshStandardMaterial({
+      map, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.9, metalness: 0 }));
+    const sombraArboles = texArboles.map((map) => new THREE.MeshDepthMaterial({
+      depthPacking: THREE.RGBADepthPacking, map, alphaTest: 0.45 }));
+    const planoArbol = new THREE.PlaneGeometry(1, 1);
+    planoArbol.translate(0, 0.5, 0);
+    const soloArbustos = [];
+    arboles.forEach((a, n) => {
+      if (a.t === "arbusto") { soloArbustos.push(a); return; }
+      const k = [0, 0, 1, 0, 2, 1, 0, 1][n % 8];     // más guayacanes, algunos samanes y yarumos
+      const d = a.r * 2 * (0.9 + ((n * 37) % 10) / 25);
+      const v = new THREE.Mesh(planoArbol, matArboles[k]);
+      v.customDepthMaterial = sombraArboles[k];
+      const [x, z] = aTres(a.x, a.y);
+      v.position.set(x, a.z - 0.05, z);
+      v.scale.set(d, d * ESPECIES[k].alto, 1);
+      v.userData.tex = texArboles[k];
+      v.castShadow = true;
+      vallas.push(v);
+      escena.add(v);
+    });
+    const ga = geometriaArboles(soloArbustos);
     const matTronco = new THREE.MeshStandardMaterial({ color: 0x5B4632, roughness: 1 });
     const matCopas = [0x4F6B34, 0x5E7A3C, 0x456030].map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.95 }));
     const vegetacion = [];
@@ -765,12 +813,12 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58svh, 620px)", lo
     escena.fog = lote ? new THREE.Fog(0xB9C4CF, radio * 1.8, radio * 3.4) : new THREE.Fog(0xB9C4CF, radio * 3, radio * 9);
 
     /* cielo real (Poly Haven, CC0): ilumina la escena y hace de fondo */
-    let cielo = null, fondo = null;
+    let cielo = null, fondo = null, hdrCielo = null;
     new HDRLoader().load(`${TEX}cielo_1k.hdr`, (t) => {
       if (!vivo) { t.dispose(); return; }
       t.mapping = THREE.EquirectangularReflectionMapping;
       cielo = pmrem.fromEquirectangular(t).texture;
-      t.dispose();
+      hdrCielo = t;             // se conserva para la foto realista
       escena.environment = cielo;
       aplicarHora(estado.hora);
     });
@@ -847,11 +895,88 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58svh, 620px)", lo
 
     let vivo = true;
     const v = new THREE.Vector3();
+    /* ── Foto realista ──
+       Trazado de rayos en el navegador (three-gpu-pathtracer): la luz del
+       cielo y del sol rebota como en un render de arquitectura. La imagen
+       se va limpiando muestra a muestra; en ~300 queda lista. Solo en
+       computador: en un celular tardaría demasiado. */
+    const MUESTRAS = 300;
+    const foto = { pt: null, activo: false, pedirImagen: false, avisar: null };
+    const empezarFoto = async (avisar) => {
+      if (foto.activo) return;
+      foto.activo = true;
+      foto.pct = -1;
+      foto.avisar = avisar;
+      avisar({ estado: "preparando", muestras: 0, total: MUESTRAS });
+      ctrl.autoRotate = false;
+      ctrl.enabled = false;
+      capa.style.visibility = "hidden";
+      foto.previo = { env: escena.environment, niebla: escena.fog };
+      if (hdrCielo) escena.environment = hdrCielo;
+      escena.fog = null;
+      try {
+        const { WebGLPathTracer } = await import("three-gpu-pathtracer");
+        if (!foto.activo) return;
+        const pt = new WebGLPathTracer(render);
+        pt.renderScale = Math.min(1, 1400 / cont.clientWidth);
+        pt.tiles.set(2, 2);
+        pt.minSamples = 2;
+        pt.renderDelay = 0;
+        pt.fadeDuration = 400;
+        pt.filterGlossyFactor = 0.5;
+        /* se deja pintar el aviso "Preparando…" antes de armar la escena,
+           que ocupa el navegador uno o dos segundos */
+        await new Promise((r) => setTimeout(r, 60));
+        pt.setScene(escena, camara);
+        if (!foto.activo) { pt.dispose(); return; }
+        foto.pt = pt;
+      } catch (e) {
+        console.error("Foto realista:", e);
+        terminarFoto();
+        avisar({ estado: "error" });
+      }
+    };
+    const terminarFoto = () => {
+      foto.activo = false;
+      foto.pt?.dispose();
+      foto.pt = null;
+      if (foto.previo) { escena.environment = foto.previo.env; escena.fog = foto.previo.niebla; foto.previo = null; }
+      capa.style.visibility = "";
+      ctrl.enabled = true;
+      foto.avisar?.(null);
+    };
+
     const bucle = () => {
       if (!vivo) return;
       requestAnimationFrame(bucle);
+      if (foto.activo) {
+        const pt = foto.pt;
+        if (pt && pt.samples < MUESTRAS) {
+          pt.renderSample();
+          /* el panel se actualiza solo cuando cambia el porcentaje */
+          const pct = Math.floor((pt.samples / MUESTRAS) * 100);
+          if (pct !== foto.pct) { foto.pct = pct; foto.avisar?.({ estado: "calculando", muestras: Math.floor(pt.samples), total: MUESTRAS }); }
+        } else if (pt) {
+          pt.renderSample();          // quieta: se vuelve a pintar la misma imagen
+          if (foto.pct !== 100) { foto.pct = 100; foto.avisar?.({ estado: "lista", muestras: MUESTRAS, total: MUESTRAS }); }
+        }
+        if (import.meta.env.DEV && pt && window.__capturarFoto) {   // solo para revisar en desarrollo
+          window.__capturarFoto(render.domElement.toDataURL("image/png"), pt.samples);
+          window.__capturarFoto = null;
+        }
+        /* la imagen se lee en el mismo cuadro en que se pintó */
+        if (pt && foto.pedirImagen) {
+          foto.pedirImagen = false;
+          const a = document.createElement("a");
+          a.href = render.domElement.toDataURL("image/jpeg", 0.92);
+          a.download = `altos-del-chinaquillo-${modelo}.jpg`;
+          a.click();
+        }
+        return;
+      }
       ctrl.update();
       ajustarTecho();
+      for (const v of vallas) v.rotation.y = Math.atan2(camara.position.x - v.position.x, camara.position.z - v.position.z);
       compositor.render();
 
       const { clientWidth: w, clientHeight: h } = cont;
@@ -878,9 +1003,27 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58svh, 620px)", lo
     };
     bucle();
 
+    /* al atardecer las lámparas de adentro están prendidas: una luz cálida
+       por ambiente interior, a 2,1 m (máximo 6; en celular ninguna) */
+    const EXTERIOR = /piscina|jacuzzi|terraza|bbq|exterior|patio/i;
+    const lamparas = [];
+    if (!window.matchMedia?.("(pointer: coarse)").matches) {
+      niveles.forEach((n, i) => {
+        for (const a of n.ambientes) {
+          if (lamparas.length >= 6 || EXTERIOR.test(a.t)) continue;
+          const l = new THREE.PointLight(0xFFB36B, 5, 7, 2);
+          const [x, z] = aTres(a.x, a.y);
+          l.position.set(x, 2.1, z);
+          grupos[i].add(l);
+          lamparas.push(l);
+        }
+      });
+    }
+
     const aplicarHora = (k) => {
       const a = AMBIENTACION[k];
       estado.hora = k;
+      lamparas.forEach((l) => { l.visible = k === "tarde"; });
       escena.background = fondo ?? new THREE.Color(a.fondo);
       escena.backgroundIntensity = a.intCielo;
       escena.environmentIntensity = cielo ? 0.9 * a.intEntorno : 0.45;
@@ -949,7 +1092,8 @@ uniform float rep;
       onInfo?.({ cabe, huella: dh.huella, pct: (dh.huella / lote.area) * 100, pendiente: rel.pendiente * 100 });
     };
 
-    escenaRef.current = { grupos, ctrl, aplicarHora, estado, montarLote };
+    escenaRef.current = { grupos, ctrl, aplicarHora, estado, montarLote, empezarFoto, terminarFoto,
+      descargarFoto: () => { foto.pedirImagen = true; } };
     if (import.meta.env.DEV) window.__casa3d = { escena, grupos, pisos, camara, render, ctrl, ajustarTecho, compositor };
     setListo(true);
 
@@ -959,10 +1103,16 @@ uniform float rep;
       render.domElement.removeEventListener("pointerdown", parar);
       render.domElement.removeEventListener("wheel", parar);
       ctrl.dispose();
+      foto.activo = false;
+      foto.pt?.dispose();
+      hdrCielo?.dispose();
       compositor.dispose();
+      limpiezas.forEach((f) => f());
       matLindero.dispose(); matVecinos.dispose();
       if (texSat) { texSat.dispose(); pasto.material.dispose(); }
       matTronco.dispose(); matCopas.forEach((m) => m.dispose());
+      [...matArboles, ...sombraArboles, ...texArboles].forEach((x) => x.dispose());
+      planoArbol.dispose();
       render.dispose();
       cielo?.dispose(); fondo?.dispose();
       for (const t of texturasPBR) t.dispose();
@@ -1028,7 +1178,38 @@ uniform float rep;
         </div>
       )}
 
-      {tieneTecho && (
+      {!tactil && !foto && (
+        <button onClick={() => escenaRef.current?.empezarFoto(setFoto)} className="glass-pill"
+          style={{ position: "absolute", bottom: 12, right: tieneTecho ? 138 : 14, zIndex: 3, padding: "9px 16px", fontSize: 12,
+            cursor: "pointer", border: "none", color: "#E5BC8B" }}>
+          Foto realista
+        </button>
+      )}
+      {foto && (
+        <div className="glass-panel" style={{ position: "absolute", left: "50%", bottom: 14, transform: "translateX(-50%)", zIndex: 5,
+          padding: "12px 16px", borderRadius: 16, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+          <span className="meta" style={{ fontSize: 12.5 }}>
+            {foto.estado === "preparando" && "Preparando la escena…"}
+            {foto.estado === "calculando" && `Calculando la luz… ${Math.round((foto.muestras / foto.total) * 100)} %`}
+            {foto.estado === "lista" && "Foto lista"}
+            {foto.estado === "error" && "Este equipo no pudo calcular la foto."}
+          </span>
+          {(foto.estado === "calculando" || foto.estado === "lista") && (
+            <button onClick={() => escenaRef.current?.descargarFoto()}
+              style={{ padding: "8px 14px", fontSize: 12, border: "none", borderRadius: 999, cursor: "pointer",
+                background: "var(--grad-oro)", color: "var(--tinta)" }}>
+              Descargar imagen
+            </button>
+          )}
+          <button onClick={() => escenaRef.current?.terminarFoto()}
+            style={{ padding: "8px 14px", fontSize: 12, border: "none", borderRadius: 999, cursor: "pointer",
+              background: "rgba(255,255,255,0.08)", color: "var(--texto)" }}>
+            Volver a la maqueta
+          </button>
+        </div>
+      )}
+
+      {tieneTecho && !foto && (
         <button onClick={() => setTecho((t) => !t)} className="glass-pill"
           style={{ position: "absolute", bottom: 12, right: 14, zIndex: 3, padding: "9px 16px", fontSize: 12,
             cursor: "pointer", border: "none", color: "#E5BC8B" }}>
