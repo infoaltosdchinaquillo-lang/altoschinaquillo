@@ -1,0 +1,16 @@
+RELIEVE DEL PROYECTO A PARTIR DE LOS DWG DEL TOPÓGRAFO
+======================================================
+Genera public/relieve/{z}/{x}/{y}.png (alturas en formato Terrarium) que usan
+el mapa de lotes y "Tu casa aquí" (ver src/relieve.js).
+
+Dependencias (no van en el proyecto; instalarlas aparte en esta carpeta):
+  npm i --no-save @mlightcad/libredwg-web proj4 pngjs
+
+1. DWG -> JSON (LibreDWG):
+   node leer_dwg.mjs "ACAD-TOP-GENERAL ALTOS DE CHINQUILLO 10-03-2021.dwg" top.json
+   node leer_dwg.mjs "ACAD-CURVAS DE NIVEL-Model..dwg" curvas.json
+2. JSON -> baldosas (capa "CURVAS DE NIVEL"; top.json manda, curvas.json
+   rellena donde top no tiene curvas; fuera del levantamiento, satelital +13 m):
+   node --max-old-space-size=6000 gen.mjs ../../public/relieve
+3. Si cambian los rangos de baldosas, actualizar PROPIAS en src/relieve.js
+   (el programa escribe la lista en baldosas.json).

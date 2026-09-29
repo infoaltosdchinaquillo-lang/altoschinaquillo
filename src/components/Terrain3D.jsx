@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { MapLibreMap, NavigationControl, Popup, setWorkerUrl } from "maplibre-gl";
+import { MapLibreMap, NavigationControl, Popup, addProtocol, setWorkerUrl } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { LOTES_GEO, PREDIO, RESERVA, ZONAS_VERDES } from "../lotesGeo";
 import { MODELOS } from "../data";
 import { CASAS_3D } from "../casas3d";
 import { loteLocal, relieve } from "../loteTerreno";
+import { cargarBaldosaMapa, ZOOM_RELIEVE } from "../relieve";
 import { menosMovimiento } from "./ui";
 
 /* pantalla táctil (celular o tableta) */
@@ -20,9 +21,8 @@ const dur = (ms) => (menosMovimiento() ? 0 : ms);
    ▸ Geometría: plano oficial P-1 (ver src/lotesGeo.js).
      Cada lote es su polígono real, con su nombre en el
      punto más interior — no una posición a ojo.
-   ▸ Relieve: AWS Open Data / Terrarium (base SRTM, ~12–30 m).
-     Muestra la ladera y la pendiente general; suaviza las
-     terrazas. Con el DSM del dron se cambia la fuente `dem`.
+   ▸ Relieve: curvas de nivel del topógrafo (cada 0,5 m), con el
+     satelital gratuito alrededor. Ver src/relieve.js.
    ▸ Satélite: Esri World Imagery — solo como contexto. Su
      licencia comercial es ambigua; "Relieve" es 100 % libre.
 
@@ -34,7 +34,8 @@ const dur = (ms) => (menosMovimiento() ? 0 : ms);
    Sin esto el relieve se queda cargando en silencio bajo Vite. */
 setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
 
-const DEM_TILES = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png";
+addProtocol("relieve", cargarBaldosaMapa);
+const DEM_TILES = "relieve://{z}/{x}/{y}";
 const SAT_TILES =
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 const GLYPHS = "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf";
@@ -73,11 +74,6 @@ const C = {
    15,98 → nada; 16,00 → todo. No hace falta alejarse más: el loteo completo
    cabe en zoom 16 incluso en un teléfono. */
 const ZOOM_MIN = 16;
-
-/* El relieve SRTM sale ~13 m por debajo del levantamiento del topógrafo en
-   los 3 puntos GPS del plano (−16, −13 y −10 m). Se corrige ese sesgo para
-   que las alturas mostradas coincidan con el plano. No afecta desniveles. */
-const AJUSTE_ALTURA_M = 13;
 
 const poligono = (ring, props = {}, id) => ({
   type: "Feature",
@@ -187,10 +183,10 @@ export default function Terrain3D({
         version: 8,
         glyphs: GLYPHS,
         sources: {
-          dem: { type: "raster-dem", tiles: [DEM_TILES], tileSize: 256, maxzoom: 15, encoding: "terrarium",
-            attribution: "Relieve: AWS Open Data / Tilezen" },
+          dem: { type: "raster-dem", tiles: [DEM_TILES], tileSize: 256, maxzoom: ZOOM_RELIEVE, encoding: "terrarium",
+            attribution: "Relieve: levantamiento topográfico del proyecto; alrededores AWS Open Data / Tilezen" },
           /* fuente aparte para el sombreado: compartirla con el terreno degrada la calidad */
-          demSombra: { type: "raster-dem", tiles: [DEM_TILES], tileSize: 256, maxzoom: 15, encoding: "terrarium" },
+          demSombra: { type: "raster-dem", tiles: [DEM_TILES], tileSize: 256, maxzoom: ZOOM_RELIEVE, encoding: "terrarium" },
           sat: { type: "raster", tiles: [SAT_TILES], tileSize: 256, maxzoom: 18,
             attribution: "Imagen: Esri, Maxar, Earthstar Geographics" },
           predio: { type: "geojson", data: poligono(PREDIO) },
@@ -323,7 +319,7 @@ export default function Terrain3D({
       for (const [id, g] of Object.entries(LOTES_GEO)) {
         const h = map.queryTerrainElevation(g.label);
         /* queryTerrainElevation devuelve la altura YA exagerada */
-        if (h != null) out[id] = Math.round(h / exag + AJUSTE_ALTURA_M);
+        if (h != null) out[id] = Math.round(h / exag);
       }
       if (!Object.keys(out).length) return;
       alturasRef.current = out;

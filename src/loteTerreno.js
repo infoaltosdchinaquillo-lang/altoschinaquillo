@@ -3,18 +3,17 @@
    ══════════════════════════════════════════════════
    ▸ Forma: polígono oficial del plano P-1 (src/lotesGeo.js), pasado a
      metros alrededor del punto interior del lote. X al oriente, Y al norte.
-   ▸ Relieve: el mismo del mapa de lotes (AWS Terrarium, base SRTM de
-     ~30 m). Da la inclinación general del lote, no los desniveles finos:
-     cuando llegue el plano de curvas del proyecto, se cambia aquí.
+   ▸ Relieve: el mismo del mapa de lotes — curvas de nivel del topógrafo
+     cada 0,5 m (src/relieve.js), ~1,2 m por píxel.
    ══════════════════════════════════════════════════ */
 import { LOTES_GEO } from "./lotesGeo";
+import { alturasBaldosa, ZOOM_RELIEVE } from "./relieve";
 
-const DEM = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png";
 /* la misma foto satelital del mapa de lotes (Esri World Imagery, solo como
    contexto; ver la nota de licencia en Terrain3D.jsx) */
 const SAT = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 const ZOOM_SAT = 18;             // ~0,6 m por píxel, el máximo que usa el mapa
-const ZOOM = 15;                 // ~4,7 m por píxel a esta latitud
+const ZOOM = ZOOM_RELIEVE;       // ~1,2 m por píxel a esta latitud
 
 const metros = (lat) => ({ kx: 111320 * Math.cos((lat * Math.PI) / 180), ky: 110574 });
 
@@ -77,27 +76,8 @@ async function satelite(lote, x0, y0, x1, y1) {
   return res.some(Boolean) ? c : null;       // sin foto, el visor usa césped
 }
 
-/* ── tiles de elevación ── */
-const cache = new Map();
-function tile(x, y) {
-  const k = `${x}/${y}`;
-  if (!cache.has(k)) {
-    cache.set(k, new Promise((ok, mal) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        const c = document.createElement("canvas");
-        c.width = c.height = 256;
-        const g = c.getContext("2d", { willReadFrequently: true });
-        g.drawImage(img, 0, 0);
-        ok(g.getImageData(0, 0, 256, 256).data);
-      };
-      img.onerror = () => { cache.delete(k); mal(new Error("sin relieve")); };
-      img.src = DEM.replace("{z}", ZOOM).replace("{x}", x).replace("{y}", y);
-    }));
-  }
-  return cache.get(k);
-}
+/* ── tiles de elevación (alturas reales, ver src/relieve.js) ── */
+const tile = (x, y) => alturasBaldosa(ZOOM, x, y);
 
 const aPixel = (lng, lat) => {
   const n = 2 ** ZOOM, s = Math.sin((lat * Math.PI) / 180);
@@ -123,10 +103,9 @@ export async function relieve(lote, margen = 60, paso = 0.5) {
     const tx = Math.floor(px / 256), ty = Math.floor(py / 256);
     const d = tiles[`${tx}/${ty}`];
     if (!d) return NaN;
-    const i = ((Math.floor(py) - ty * 256) * 256 + (Math.floor(px) - tx * 256)) * 4;
-    return d[i] * 256 + d[i + 1] + d[i + 2] / 256 - 32768;
+    return d[(Math.floor(py) - ty * 256) * 256 + (Math.floor(px) - tx * 256)];
   };
-  /* bilineal entre píxeles: los escalones de 4,7 m no se ven */
+  /* bilineal entre píxeles */
   const altura = (x, y) => {
     const [px, py] = aPixel(...aGeo(x, y));
     const fx = px - 0.5, fy = py - 0.5;
@@ -140,8 +119,18 @@ export async function relieve(lote, margen = 60, paso = 0.5) {
   const z = new Float32Array(nx * ny);
   for (let i = 0; i < ny; i++) for (let j = 0; j < nx; j++) z[i * nx + j] = altura(x0 + j * paso, y1 - i * paso);
 
-  /* la bajada general del lote: diferencia de alturas a ±10 m del centro */
-  const gx = (altura(10, 0) - altura(-10, 0)) / 20, gy = (altura(0, 10) - altura(0, -10)) / 20;
+  /* la bajada general del lote: el plano que mejor se ajusta a todo el
+     terreno dentro del lindero (mínimos cuadrados). Con el relieve fino,
+     unos pocos puntos cerca del centro podían caer en un talud o una vía. */
+  let n = 0, sx = 0, sy = 0, sz = 0, sxx = 0, syy = 0, sxy = 0, sxz = 0, syz = 0;
+  for (let i = 0; i < ny; i += 2) for (let j = 0; j < nx; j += 2) {
+    const x = x0 + j * paso, y = y1 - i * paso, h = z[i * nx + j];
+    if (Number.isNaN(h) || !dentroDe([x, y], lote.poly)) continue;
+    n++; sx += x; sy += y; sz += h; sxx += x * x; syy += y * y; sxy += x * y; sxz += x * h; syz += y * h;
+  }
+  const cxx = sxx - sx * sx / n, cyy = syy - sy * sy / n, cxy = sxy - sx * sy / n;
+  const cxz = sxz - sx * sz / n, cyz = syz - sy * sz / n, det = cxx * cyy - cxy * cxy;
+  const gx = (cxz * cyy - cyz * cxy) / det, gy = (cyz * cxx - cxz * cxy) / det;
   return { x0, y1, paso, nx, ny, z, cota0: altura(0, 0), bajada: Math.atan2(-gy, -gx), pendiente: Math.hypot(gx, gy),
     sat: await foto, vecinos: lotesCerca(lote) };
 }
