@@ -42,69 +42,77 @@ export const VALORIZACION_NOTA =
    (se excluyen tanques, vías, zonas verdes y la reserva)
    ══════════════════════════════════════════════════ */
 const RAW = [
-  // nombre, área m², vendido, precio en millones, tipo de terreno
-  ["Abedul"       ,  1042.23, false, 182, "leve"],
-  ["Afrodita"     ,  1006.42, false, 195, "leve"],
+  // nombre, área m², vendido, precio en millones, tipo de terreno, pendiente general (%)
+  ["Abedul"       ,  1042.23, false, 182, "inclinado", 53],
+  ["Afrodita"     ,  1006.42, false, 195, "inclinado", 57],
   ["Alondra"      ,  3414.34, true , 430],
   ["Artemisa"     ,  1026.14, true , 180],
-  ["Atenea"       ,  1060.25, false, 150, "inclinado"],
+  ["Atenea"       ,  1060.25, false, 150, "inclinado", 69],
   ["Avellano"     ,  1002.33, true , 175],
   ["Azulejo"      ,  1002.72, true , 175],
-  ["Calandria"    ,  1159.43, false, 195, "leve"],
-  ["Canario"      ,  1003.92, false, 195, "leve"],
+  ["Calandria"    ,  1159.43, false, 195, "inclinado", 48],
+  ["Canario"      ,  1003.92, false, 195, "leve", 33],
   ["Colibrí"      ,  1001.41, true , 175],
   ["El Amparo"    ,  1177.15, true , 206],
   ["El Cedro"     ,  1002.15, true , 175],
   ["El Ceibo"     ,  1247.99, true , 201],
-  ["El Cerezo"    ,  1111.62, false, 195, "leve"],
-  ["El Ciruelo"   ,  1252.10, false, 185, "leve"],
-  ["El Edén"      ,  1201.81, false, 198, "plano"],
+  ["El Cerezo"    ,  1111.62, false, 195, "inclinado", 49],
+  ["El Ciruelo"   ,  1252.10, false, 185, "leve", 23],
+  ["El Edén"      ,  1201.81, false, 198, "inclinado", 63],
   ["El Gorrión"   ,  1008.21, true , 176],
-  ["El Higuerón"  ,  1007.58, false, 160, "leve"],
-  ["El Manantial" ,  1003.48, false, 195, "plano"],
+  ["El Higuerón"  ,  1007.58, false, 160, "inclinado", 69],
+  ["El Manantial" ,  1003.48, false, 195, "inclinado", 46],
   ["El Manzano"   ,  1001.92, true , 175],
-  ["El Nogal"     ,  1001.78, false, 220, "plano"],
-  ["El Paraíso"   ,  1102.81, false, 195, "leve"],
-  ["El Pardillo"  ,  1257.56, false, 202, "plano"],
+  ["El Nogal"     ,  1001.78, false, 220, "leve", 34],
+  ["El Paraíso"   ,  1102.81, false, 195, "inclinado", 57],
+  ["El Pardillo"  ,  1257.56, false, 202, "leve", 39],
   ["El Refugio"   ,  1040.05, true , 182],
-  ["El Roble"     ,  1422.52, false, 195, "leve"],
-  ["El Sauce"     ,  1103.18, false, 195, "leve"],
-  ["El Turpial"   ,  1031.63, false, 195, "leve"],
+  ["El Roble"     ,  1422.52, false, 195, "inclinado", 57],
+  ["El Sauce"     ,  1103.18, false, 195, "inclinado", 47],
+  ["El Turpial"   ,  1031.63, false, 195, "inclinado", 52],
   ["Estornino"    ,  1037.01, true , 181],
-  ["Frailecillo"  ,  1001.01, false, 195, "leve"],
-  ["Gaia"         ,  1055.91, false, 195, "leve"],
+  ["Frailecillo"  ,  1001.01, false, 195, "inclinado", 51],
+  ["Gaia"         ,  1055.91, false, 195, "inclinado", 52],
   ["Golondrina"   ,  1002.65, true , 175],
   ["Jacaranda"    ,  1008.75, true , 177],
   ["La Gaviota"   ,  2168.73, true , 311],
-  ["Las Acacias"  ,  1120.10, false, 210, "plano"],
+  ["Las Acacias"  ,  1120.10, false, 210, "leve", 39],
   ["Los Almendros",  1084.04, true , 190],
-  ["Los Guaduales",  1255.22, false, 220, "plano"],
+  ["Los Guaduales",  1255.22, false, 220, "inclinado", 43],
   ["Los Naranjos" ,  1028.22, true , 180],
   ["Los Olivos"   ,  1011.55, true , 177],
-  ["Los Pinos"    ,  1004.63, false, 195, "leve"],
+  ["Los Pinos"    ,  1004.63, false, 195, "inclinado", 50],
   ["Madroño"      ,  1101.99, true , 193],
-  ["Magnolia"     ,  1115.75, false, 250, "plano"],
-  ["Mirlo"        ,  1213.11, false, 230, "plano"],
-  ["Mochuelo"     ,  1834.59, false, 220, "plano"],
-  ["Monte Olimpo" ,  1010.63, false, 250, "plano"],
+  ["Magnolia"     ,  1115.75, false, 250, "leve", 34],
+  ["Mirlo"        ,  1213.11, false, 230, "leve", 35],
+  ["Mochuelo"     ,  1834.59, false, 220, "inclinado", 51],
+  ["Monte Olimpo" ,  1010.63, false, 250, "leve", 21],
   ["Palitroque"   ,  1007.57, true , 176],
   ["Peralillo"    ,  1007.83, true , 176],
   ["Pomarroso"    ,  1001.92, true , 175],
-  ["Ruiseñor"     ,  1017.43, false, 195, "leve"],
-  ["Secouya"      ,  1065.39, false, 195, "leve"],
+  ["Ruiseñor"     ,  1017.43, false, 195, "inclinado", 40],
+  ["Secouya"      ,  1065.39, false, 195, "inclinado", 53],
 ];
 
 /* ── Tipo de terreno ──
-   Es lo que explica que dos lotes de área parecida cuesten distinto:
-   uno plano se construye con mucha menos inversión en movimiento de
-   tierra y cimentación que uno inclinado. Hoy esa razón solo está en
-   la cabeza del vendedor; mostrarla convierte una diferencia de precio
-   en un argumento.
+   Sale del levantamiento topográfico (curvas cada 0,5 m, marzo 2021; ver
+   src/relieve.js): la pendiente general de cada lote es el plano que mejor
+   se ajusta a todo el terreno dentro del lindero.
+     plano       menos de 15 %   (ningún lote disponible lo cumple)
+     leve        15 % a 40 %     → se muestra como "Pendiente moderada"
+     inclinado   40 % o más
+   Todo el loteo está en ladera: el más suave (Monte Olimpo) tiene 21 %.
+   OJO: el levantamiento es de 2021. Si después se terrazaron lotes, su
+   terreno actual puede ser más plano que esto; en ese caso hay que
+   volver a medirlos, no reclasificarlos a ojo.
+   Mirlo (42): parte del lote no tiene curvas; su pendiente usa también
+   el relieve satelital.
 
-   Lo clasificó el propietario, lote por lote (Excel del 22 sep 2026):
-   el relieve público (~30 m) no tiene resolución para deducirlo de un
-   lote ya terrazado. La clasificación concuerda con los precios:
-   plano 188 mil/m² en promedio, leve 178, inclinado 141.
+   Reclasificado el 29 sep 2026 (pedido del usuario). La clasificación
+   anterior, del propietario (Excel del 22 sep 2026), era:
+     plano: El Edén, El Manantial, El Nogal, El Pardillo, Las Acacias,
+            Los Guaduales, Magnolia, Mirlo, Mochuelo, Monte Olimpo
+     inclinado: Atenea; leve: los demás disponibles.
    Los vendidos van sin clasificar; si `terreno` está vacío, el sitio
    simplemente no muestra nada. */
 export const TERRENO = {
@@ -113,16 +121,16 @@ export const TERRENO = {
     nota: "Listo para construir: poca inversión en movimiento de tierra.",
   },
   leve: {
-    titulo: "Pendiente leve",
-    nota: "Requiere algo de adecuación, sin obras mayores.",
+    titulo: "Pendiente moderada",
+    nota: "Entre 15 % y 40 % de pendiente general: pide terraceo o cimentación escalonada moderada.",
   },
   inclinado: {
     titulo: "Inclinado",
-    nota: "Pide más inversión en cimentación; a cambio, mejor vista y mejor precio por m².",
+    nota: "40 % o más de pendiente general: pide más inversión en terraceo y cimentación; a cambio, más vista.",
   },
 };
 
-export const LOTS = RAW.map(([name, area, sold, price, terreno], i) => ({
+export const LOTS = RAW.map(([name, area, sold, price, terreno, pendiente], i) => ({
   id: i + 1,
   name,
   area: Math.round(area),
@@ -130,6 +138,7 @@ export const LOTS = RAW.map(([name, area, sold, price, terreno], i) => ({
   price,          // millones de pesos
   sold,
   terreno,        // "plano" | "leve" | "inclinado" | undefined
+  pendiente,      // % general según el levantamiento (solo disponibles)
 }));
 
 /* ══════════════════════════════════════════════════

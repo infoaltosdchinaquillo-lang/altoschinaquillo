@@ -144,15 +144,16 @@ export default function Home() {
               Chinácota, <span className="serif-em">el balcón de oriente</span>
             </h2>
             <p className="lead" style={{ marginTop: 26 }}>
-              Destino preferido del área metropolitana de Cúcuta. Clima primaveral todo el año y paisajes de montaña, a 40 minutos por vía pavimentada.
+              Destino preferido del área metropolitana de Cúcuta. Clima templado de montaña, cerca de 19 °C en los lotes, a 45 minutos de Cúcuta.
             </p>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(165px, 1fr))", gap: 16, marginTop: 60 }}>
             {[
-              { v: "22°C", l: "Promedio anual" },
-              { v: "40 min", l: "Desde Cúcuta" },
-              { v: "5 min", l: "Del parque principal" },
+              /* fuentes: ver DATOS en src/pages/Ubicacion.jsx */
+              { v: "19°C", l: "Promedio anual" },
+              { v: "45 min", l: "Desde Cúcuta" },
+              { v: "6 min", l: "Del parque principal" },
               { v: "1.000+", l: "Cabañas en la zona" },
             ].map((s, i) => (
               <div key={i} className="glass glass-hover" style={{ padding: "34px 28px" }}>

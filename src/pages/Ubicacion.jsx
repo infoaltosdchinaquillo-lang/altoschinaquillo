@@ -2,17 +2,27 @@ import { Link } from "react-router-dom";
 import { GALLERY, wa } from "../data";
 import { IconWa, IconRight, IconPin, useReveal, Head } from "../components/ui";
 
+/* Fuentes (verificado el 29 sep 2026):
+   ▸ Temperatura: estación IDEAM Blonay AUT 16015502 (Chinácota, 1.250 m),
+     promedio 20,4 °C (2016–2023, datos abiertos datos.gov.co), llevado a la
+     altura de los lotes (1.350–1.530 m) con 0,6 °C por cada 100 m → ~19 °C.
+     El reanálisis ERA5 (Open-Meteo, 2015–2024) da lo mismo: 18,5 °C a 1.440 m,
+     máximas medias ~23 °C y mínimas ~14 °C.
+   ▸ Tiempos en carro: ruta más corta en OpenStreetMap (OSRM) desde la entrada
+     del proyecto: Cúcuta (parque Santander) 43 km, parque de Chinácota 3,9 km,
+     Hospital San Juan de Dios 3,1 km, aeropuerto Camilo Daza 48,7 km. Se
+     redondea hacia arriba: OSRM no cuenta curvas ni tráfico. */
 const DATOS = [
-  { v: "22°C", l: "Temperatura promedio", d: "Clima primaveral todo el año" },
-  { v: "40 min", l: "Desde Cúcuta", d: "Vía pavimentada en buen estado" },
-  { v: "5 min", l: "Del parque principal", d: "Chinácota centro" },
+  { v: "19°C", l: "Temperatura promedio", d: "Días de unos 23 °C y noches de unos 14 °C" },
+  { v: "45 min", l: "Desde Cúcuta", d: "43 km por carretera" },
+  { v: "6 min", l: "Del parque principal", d: "Chinácota centro, a 4 km" },
   /* alturas de los 49 lotes según el levantamiento topográfico (src/relieve.js) */
   { v: "+1.350 m", l: "Sobre el nivel del mar", d: "Los lotes van de 1.350 a 1.530 m, según el levantamiento topográfico" },
 ];
 
 const CERCA = [
-  { t: "Parque principal de Chinácota", d: "5 minutos en carro" },
-  { t: "Hospital y centro de salud", d: "6 minutos" },
+  { t: "Parque principal de Chinácota", d: "6 minutos en carro" },
+  { t: "Hospital San Juan de Dios", d: "5 minutos" },
   { t: "Colegios y supermercados", d: "5-8 minutos" },
   { t: "Ruta del café y restaurantes", d: "10-15 minutos" },
   { t: "Páramo Mejué (senderismo)", d: "25 minutos" },

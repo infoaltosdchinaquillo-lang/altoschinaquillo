@@ -115,7 +115,8 @@ export default function Lotes() {
                   backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23857B6D' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")",
                   backgroundRepeat: "no-repeat", backgroundPosition: "right 15px center" }}>
                 <option value="todos" style={{ background: "#171310" }}>Todo terreno</option>
-                {Object.entries(TERRENO).map(([k, v]) => (
+                {/* solo las clases que tienen lotes (hoy ningún lote es plano) */}
+                {Object.entries(TERRENO).filter(([k]) => LOTS.some((l) => l.terreno === k)).map(([k, v]) => (
                   <option key={k} value={k} style={{ background: "#171310" }}>{v.titulo}</option>
                 ))}
               </select>

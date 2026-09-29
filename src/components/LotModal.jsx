@@ -150,7 +150,7 @@ export default function LotModal({ lot, onClose, onCompare, inCompare, onVerEnMa
                         ["Precio por m²", cop(Math.round(price / lot.area))],
                         [`Inicial (${PLAN.inicialPct}%)`, cop(ini)],
                         ["Saldo financiado", cop(plan.saldo)],
-                        ...(TERRENO[lot.terreno] ? [["Terreno", TERRENO[lot.terreno].titulo]] : []),
+                        ...(TERRENO[lot.terreno] ? [["Terreno", `${TERRENO[lot.terreno].titulo}${lot.pendiente ? ` · ${lot.pendiente} %` : ""}`]] : []),
                         ["Uso", "Campestre residencial"],
                       ].map(([k, v], i) => (
                         <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
