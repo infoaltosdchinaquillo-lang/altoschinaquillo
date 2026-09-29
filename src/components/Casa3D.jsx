@@ -339,13 +339,37 @@ function terrenoLote(rel, lote, phi, dh) {
   g.setIndex(idx);
   g.computeVertexNormals();
 
+  /* vía del plano P-1: las mismas celdas del terreno, 3 cm por encima */
+  let gVia = null;
+  if (rel.via) {
+    const iv = [];
+    for (let i = 0; i < ny - 1; i++) for (let j = 0; j < nx - 1; j++) {
+      const a = i * nx + j, b = a + 1, c = a + nx, e = c + 1;
+      if (!(rel.via[a] || rel.via[b] || rel.via[c] || rel.via[e])) continue;
+      if (fuera[a] + fuera[b] + fuera[c] + fuera[e]) continue;
+      iv.push(a, c, b, b, c, e);
+    }
+    if (iv.length) {
+      const pv = pos.slice();
+      for (let k = 1; k < pv.length; k += 3) pv[k] += 0.03;
+      gVia = new THREE.BufferGeometry();
+      gVia.setAttribute("position", new THREE.BufferAttribute(pv, 3));
+      /* la máscara cubre el recuadro entero: coordenadas 0–1 de la malla */
+      const uvv = new Float32Array(n * 2);
+      for (let i = 0; i < ny; i++) for (let j = 0; j < nx; j++) uvv.set([j / (nx - 1), 1 - i / (ny - 1)], (i * nx + j) * 2);
+      gVia.setAttribute("uv", new THREE.BufferAttribute(uvv, 2));
+      gVia.setIndex(iv);
+      gVia.computeVertexNormals();
+    }
+  }
+
   const alturaEn = (x, y) => {
     const fj = (x - x0) / paso, fi = (y1 - y) / paso;
     const j = Math.min(Math.max(Math.floor(fj), 0), nx - 2), i = Math.min(Math.max(Math.floor(fi), 0), ny - 2);
     const u = fj - j, v = fi - i, k = i * nx + j;
     return z[k] * (1 - u) * (1 - v) + z[k + 1] * u * (1 - v) + z[k + nx] * (1 - u) * v + z[k + nx + 1] * u * v;
   };
-  return { g, alturaEn };
+  return { g, gVia, alturaEn };
 }
 
 /* lindero del lote: una cinta que sigue el terreno */
@@ -1045,6 +1069,16 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58svh, 620px)", lo
     collar.receiveShadow = true;
     if (lote) { escena.add(lindero); pivote.add(collar); }
     const dh = lote ? datosHuella(niveles) : null;
+    /* vía: tono de afirmado, dejando ver la foto satelital debajo (no se
+       sabe si está pavimentada) */
+    const matVia = new THREE.MeshStandardMaterial({ color: 0x9A8F7C, roughness: 1, metalness: 0,
+      transparent: true, opacity: 0.6, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+    const via = new THREE.Mesh(new THREE.BufferGeometry(), matVia);
+    via.receiveShadow = true;
+    if (lote) escena.add(via);
+    /* árboles medidos por el topógrafo (src/entornoGeo.js): posición real,
+       tamaño y especie ilustrativos (el plano no los da) */
+    let vallasLote = [];
     /* `grados`: giro elegido por el usuario sobre la orientación sugerida */
     const montarLote = (rel, grados) => {
       if (!lote || !rel) return;
@@ -1053,6 +1087,30 @@ export default function Casa3D({ modelo, alto = "clamp(340px, 58svh, 620px)", lo
       const t = terrenoLote(rel, lote, phi, dh);
       pasto.geometry.dispose(); pasto.geometry = t.g;
       lindero.geometry.dispose(); lindero.geometry = geometriaLindero(lote.poly, t.alturaEn);
+      via.geometry.dispose(); via.geometry = t.gVia ?? new THREE.BufferGeometry();
+      if (rel.viaMapa && !matVia.alphaMap) {
+        matVia.alphaMap = new THREE.CanvasTexture(rel.viaMapa);
+        matVia.alphaMap.anisotropy = 8;
+        matVia.needsUpdate = true;
+      }
+      for (const v of vallasLote) { escena.remove(v); vallas.splice(vallas.indexOf(v), 1); }
+      vallasLote = [];
+      const ocupado = [...dh.huellas.flatMap((h) => h.polys), ...dh.exterior];
+      (rel.arboles ?? []).forEach(([x, y], n) => {
+        if (ocupado.some((q) => dentroDe(aCasa([x, y], phi), q))) return;   // donde va la casa, se corta
+        const k = [0, 0, 1, 0, 2, 1, 0, 1][n % 8];
+        const d = 4 + ((n * 37) % 10) / 5;          // copa de 4 a 6 m
+        const v = new THREE.Mesh(planoArbol, matArboles[k]);
+        v.customDepthMaterial = sombraArboles[k];
+        v.position.set(x, t.alturaEn(x, y) - 0.05, -y);
+        const img = texArboles[k].image;
+        v.scale.set(d * (img ? img.width / img.height * ESPECIES[k].alto : 1), d * ESPECIES[k].alto, 1);
+        v.userData.tex = texArboles[k];
+        v.castShadow = true;
+        escena.add(v);
+        vallas.push(v);
+        vallasLote.push(v);
+      });
       /* la foto satelital del lugar como suelo, y los linderos vecinos */
       if (rel.sat && !texSat) {
         texSat = new THREE.CanvasTexture(rel.sat);
@@ -1108,7 +1166,7 @@ uniform float rep;
       hdrCielo?.dispose();
       compositor.dispose();
       limpiezas.forEach((f) => f());
-      matLindero.dispose(); matVecinos.dispose();
+      matLindero.dispose(); matVecinos.dispose(); matVia.alphaMap?.dispose(); matVia.dispose(); via.geometry.dispose();
       if (texSat) { texSat.dispose(); pasto.material.dispose(); }
       matTronco.dispose(); matCopas.forEach((m) => m.dispose());
       [...matArboles, ...sombraArboles, ...texArboles].forEach((x) => x.dispose());

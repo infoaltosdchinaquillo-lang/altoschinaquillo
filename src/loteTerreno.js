@@ -8,6 +8,7 @@
    ══════════════════════════════════════════════════ */
 import { LOTES_GEO } from "./lotesGeo";
 import { alturasBaldosa, ZOOM_RELIEVE } from "./relieve";
+import { ARBOLES, VIAS } from "./entornoGeo";
 
 /* la misma foto satelital del mapa de lotes (Esri World Imagery, solo como
    contexto; ver la nota de licencia en Terrain3D.jsx) */
@@ -131,6 +132,32 @@ export async function relieve(lote, margen = 60, paso = 0.5) {
   const cxx = sxx - sx * sx / n, cyy = syy - sy * sy / n, cxy = sxy - sx * sy / n;
   const cxz = sxz - sx * sz / n, cyz = syz - sy * sz / n, det = cxx * cyy - cxy * cxy;
   const gx = (cxz * cyy - cyz * cxy) / det, gy = (cyz * cxx - cxz * cxy) / det;
-  return { x0, y1, paso, nx, ny, z, cota0: altura(0, 0), bajada: Math.atan2(-gy, -gx), pendiente: Math.hypot(gx, gy),
+  /* entorno de los planos (src/entornoGeo.js): qué celdas son vía y qué
+     árboles medidos caen dentro del recuadro */
+  const aLocal = ([lng, lat]) => [(lng - lote.lng0) * kx, (lat - lote.lat0) * ky];
+  const vias = VIAS.map((p) => p.map(aLocal));
+  const via = new Uint8Array(nx * ny);
+  /* máscara suave de la vía (4 px por metro), para no ver escalones */
+  const PX = 4, viaMapa = document.createElement("canvas");
+  viaMapa.width = Math.round((x1 - x0) * PX); viaMapa.height = Math.round((y1 - y0) * PX);
+  const gv = viaMapa.getContext("2d");
+  gv.fillStyle = "#fff";
+  gv.beginPath();
+  for (const q of vias) q.forEach(([x, y], k) => gv[k ? "lineTo" : "moveTo"]((x - x0) * PX, (y1 - y) * PX));
+  gv.fill("evenodd");
+  const dv = gv.getImageData(0, 0, viaMapa.width, viaMapa.height).data;
+  /* celdas que tocan la vía (para armar la malla que lleva la máscara) */
+  for (let i = 0; i < ny; i++) for (let j = 0; j < nx; j++) {
+    const px = Math.min(viaMapa.width - 1, Math.round(j * paso * PX)), py = Math.min(viaMapa.height - 1, Math.round(i * paso * PX));
+    let hay = 0;
+    for (let di = -3; di <= 3 && !hay; di++) for (let dj = -3; dj <= 3 && !hay; dj++) {
+      const a = py + di, b = px + dj;
+      if (a >= 0 && b >= 0 && a < viaMapa.height && b < viaMapa.width && dv[(a * viaMapa.width + b) * 4] > 0) hay = 1;
+    }
+    via[i * nx + j] = hay;
+  }
+  const arboles = ARBOLES.map(aLocal).filter(([x, y]) => x > x0 + 2 && x < x1 - 2 && y > y0 + 2 && y < y1 - 2);
+
+  return { x0, y1, paso, nx, ny, z, via, viaMapa, arboles, cota0: altura(0, 0), bajada: Math.atan2(-gy, -gx), pendiente: Math.hypot(gx, gy),
     sat: await foto, vecinos: lotesCerca(lote) };
 }

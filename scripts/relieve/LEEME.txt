@@ -14,3 +14,10 @@ Dependencias (no van en el proyecto; instalarlas aparte en esta carpeta):
    node --max-old-space-size=6000 gen.mjs ../../public/relieve
 3. Si cambian los rangos de baldosas, actualizar PROPIAS en src/relieve.js
    (el programa escribe la lista en baldosas.json).
+
+VÍAS Y ÁRBOLES (src/entornoGeo.js)
+4. node vias.mjs            -> extra.json (árboles "ARB" del levantamiento, ejes del DWG)
+   (necesita p1.json: LOTES_GEO, PREDIO, RESERVA y ZONAS_VERDES de src/lotesGeo.js)
+   python vias.py           -> vias_poly.json (predio − lotes − reserva − zonas verdes)
+   node entorno.cjs ../../src/entornoGeo.js
+   El trazado de vías del DWG (2021) NO se usa: en el oriente no coincide con el P-1.
