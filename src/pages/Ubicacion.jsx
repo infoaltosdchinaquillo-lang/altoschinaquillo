@@ -6,7 +6,8 @@ const DATOS = [
   { v: "22°C", l: "Temperatura promedio", d: "Clima primaveral todo el año" },
   { v: "40 min", l: "Desde Cúcuta", d: "Vía pavimentada en buen estado" },
   { v: "5 min", l: "Del parque principal", d: "Chinácota centro" },
-  { v: "1.240 m", l: "Sobre el nivel del mar", d: "Altura ideal, sin frío extremo" },
+  /* alturas de los 49 lotes según el levantamiento topográfico (src/relieve.js) */
+  { v: "+1.350 m", l: "Sobre el nivel del mar", d: "Los lotes van de 1.350 a 1.530 m, según el levantamiento topográfico" },
 ];
 
 const CERCA = [
