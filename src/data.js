@@ -517,7 +517,7 @@ export const AREA_MAX = Math.max(...DISPONIBLES.map((l) => l.area));
 export const PLAN = {
   inicialPct: 20,     // antes 30
   meses: 24,          // antes 12–15
-  mesesMax: 36,
+  mesesMax: 24,       // tope fijado por el propietario (13 oct 2026); antes 36
   inicialMin: 10,
   extraordinarias: true,
   extraPct: 5,        // cada extraordinaria = 5% del valor del lote
