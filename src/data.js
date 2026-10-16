@@ -7,6 +7,8 @@
      Excel "Altos_de_Chinaquillo_lotes.xlsx" (22 sep 2026).
      Para actualizarlos, volver a generar ese archivo, editarlo y
      reemplazar el bloque RAW de abajo.
+     Precio mínimo de un lote disponible: 180 millones (16 oct 2026).
+     Por eso Atenea (antes 150) y El Higuerón (antes 160) quedaron en 180.
    ▸ UBICACIÓN: cada lote se dibuja con su polígono real del
      plano oficial P-1 — ver src/lotesGeo.js (mismo `id`).
    ══════════════════════════════════════════════════ */
@@ -47,7 +49,7 @@ const RAW = [
   ["Afrodita"     ,  1006.42, false, 195, "inclinado", 57],
   ["Alondra"      ,  3414.34, true , 430],
   ["Artemisa"     ,  1026.14, true , 180],
-  ["Atenea"       ,  1060.25, false, 150, "inclinado", 69],
+  ["Atenea"       ,  1060.25, false, 180, "inclinado", 69],
   ["Avellano"     ,  1002.33, true , 175],
   ["Azulejo"      ,  1002.72, true , 175],
   ["Calandria"    ,  1159.43, false, 195, "inclinado", 48],
@@ -60,7 +62,7 @@ const RAW = [
   ["El Ciruelo"   ,  1252.10, false, 185, "leve", 23],
   ["El Edén"      ,  1201.81, false, 198, "inclinado", 63],
   ["El Gorrión"   ,  1008.21, true , 176],
-  ["El Higuerón"  ,  1007.58, false, 160, "inclinado", 69],
+  ["El Higuerón"  ,  1007.58, false, 180, "inclinado", 69],
   ["El Manantial" ,  1003.48, false, 195, "inclinado", 46],
   ["El Manzano"   ,  1001.92, true , 175],
   ["El Nogal"     ,  1001.78, false, 220, "leve", 34],
