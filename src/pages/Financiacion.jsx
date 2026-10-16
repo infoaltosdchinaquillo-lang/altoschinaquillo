@@ -114,7 +114,7 @@ export default function Financiacion() {
                     ))}
                   </select>
                   <p className="meta" style={{ marginTop: 10, fontSize: 12.5 }}>
-                    {DISPONIBLES.length} lotes disponibles, desde ${PRECIO_MIN}M hasta ${PRECIO_MAX}M
+                    {DISPONIBLES.length} lotes disponibles, desde {PRECIO_MIN} millones hasta {PRECIO_MAX} millones
                   </p>
                 </div>
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { wa, AVAIL, TEL_DISPLAY } from "../data";
+import { wa, AVAIL, TEL_DISPLAY, PRECIO_MIN } from "../data";
 import { IconWa } from "./ui";
 
 const NAV = [
@@ -102,7 +102,7 @@ export default function Layout({ children }) {
             <div>
               <div style={{ fontFamily: "Fraunces, serif", fontSize: 19, letterSpacing: "0.18em", color: "var(--oro-texto)", fontWeight: 500 }}>ALTOS</div>
               <p className="body" style={{ marginTop: 18, maxWidth: 270 }}>
-                Urbanización campestre en Chinácota, Norte de Santander. Lotes desde 1.000 m² con servicios y financiación directa.
+                Urbanización campestre en Chinácota, Norte de Santander. Lotes desde 1.000 m², desde {PRECIO_MIN} millones, con servicios y financiación directa.
               </p>
             </div>
             <div>

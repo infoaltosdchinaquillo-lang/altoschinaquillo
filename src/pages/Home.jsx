@@ -37,7 +37,7 @@ export default function Home() {
 
             <p className="lead" style={{ marginTop: 38, maxWidth: 490, color: "#C2B6A5" }}>
               Lotes campestres desde 1.000 m² con servicios instalados, vías de acceso y vista al valle.
-              Desde <strong className="gold">${PRECIO_MIN}M</strong> con financiación directa sin intereses.
+              Desde <strong className="gold">{PRECIO_MIN} millones</strong> con financiación directa sin intereses.
             </p>
 
             <div style={{ display: "flex", gap: 14, marginTop: 46, flexWrap: "wrap" }}>

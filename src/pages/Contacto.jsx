@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { wa, WA, AVAIL, DISPONIBLES, cop, PRECIO_MIN, TEL_DISPLAY } from "../data";
+import { wa, WA, AVAIL, DISPONIBLES, PRECIO_MIN, TEL_DISPLAY } from "../data";
 import { IconWa, IconPin, useReveal, Head } from "../components/ui";
 
 const INTERES = ["Un lote (solo terreno)", "Promoción Casa + Lote", "Todavía no lo tengo claro"];
@@ -150,7 +150,7 @@ export default function Contacto() {
                 <div className="eyebrow" style={{ fontSize: 11.5 }}>Disponibilidad actual</div>
                 <div className="num gold" style={{ fontSize: 38, marginTop: 12 }}>{AVAIL} lotes</div>
                 <p className="meta" style={{ marginTop: 10 }}>
-                  Desde {cop(PRECIO_MIN * 1e6)} con financiación directa sin intereses.
+                  Desde {PRECIO_MIN} millones con financiación directa sin intereses.
                 </p>
               </div>
             </div>
